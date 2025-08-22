@@ -2,13 +2,13 @@ import CompetitionCard from "@/components/CompetitionCard";
 import { mockCompetitions, mockUsers, competitionCategories } from "@/lib/mockData";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card,  CardHeader } from "@/components/ui/card";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { CheckCircle, School, MapPin, Star, Target, Calendar as CalendarIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
-import { Search, ArrowRight, Trophy, Users } from "lucide-react";
+import { Search, ArrowRight, Users } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 
