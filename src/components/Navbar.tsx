@@ -3,7 +3,6 @@ import { Link, useLocation } from "react-router-dom";
 import {
   Bell,
   Calendar,
-  Search,
   User,
   Menu,
   X,
@@ -12,7 +11,6 @@ import {
   Settings,
   BarChart3,
   Briefcase,
-  Shield,
   Info,
   Rocket,
   Building2,
