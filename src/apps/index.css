@@ -1,0 +1,114 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  /**
+   * Contest Buddy Competition Platform theme
+   * Modern Vietnamese competition platform with fresh branding
+   */
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 232 15% 15%;
+    --card: 0 0% 100%;
+    --card-foreground: 232 15% 15%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 232 15% 15%;
+    --primary: 262 90% 50%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 262 20% 96%;
+    --secondary-foreground: 262 90% 25%;
+    --muted: 262 15% 96%;
+    --muted-foreground: 232 15% 60%;
+    --accent: 262 20% 94%;
+    --accent-foreground: 262 90% 25%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 262 20% 90%;
+    --input: 262 20% 94%;
+    --ring: 262 90% 50%;
+    --radius: 0.75rem;
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 232 15% 15%;
+    --sidebar-primary: 262 90% 50%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 262 20% 96%;
+    --sidebar-accent-foreground: 262 90% 25%;
+    --sidebar-border: 262 20% 90%;
+    --sidebar-ring: 262 90% 50%;
+  }
+
+  .dark {
+    --background: 232 20% 8%;
+    --foreground: 0 0% 98%;
+    --card: 232 20% 10%;
+    --card-foreground: 0 0% 98%;
+    --popover: 232 20% 10%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 262 90% 55%;
+    --primary-foreground: 232 20% 8%;
+    --secondary: 232 15% 18%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 232 15% 18%;
+    --muted-foreground: 232 10% 65%;
+    --accent: 232 15% 20%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 75% 55%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 232 15% 20%;
+    --input: 232 15% 18%;
+    --ring: 262 90% 55%;
+    --sidebar-background: 232 20% 8%;
+    --sidebar-foreground: 0 0% 98%;
+    --sidebar-primary: 262 90% 55%;
+    --sidebar-primary-foreground: 232 20% 8%;
+    --sidebar-accent: 232 15% 18%;
+    --sidebar-accent-foreground: 0 0% 98%;
+    --sidebar-border: 232 15% 20%;
+    --sidebar-ring: 262 90% 55%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings:
+      "rlig" 1,
+      "calt" 1;
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden;
+  }
+
+  html {
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden;
+  }
+}
+
+@layer components {
+  .container {
+    @apply mx-auto max-w-7xl;
+  }
+
+  .gradient-text {
+    @apply bg-gradient-to-r from-primary via-purple-500 to-pink-500 bg-clip-text text-transparent;
+  }
+
+  .card-hover {
+    @apply transition-all duration-300 hover:shadow-lg hover:-translate-y-1;
+  }
+
+  .bg-grid-16 {
+    background-image: url("data:image/svg+xml,%3csvg width='16' height='16' viewBox='0 0 16 16' fill='none' xmlns='http://www.w3.org/2000/svg'%3e%3cpath d='M0 0h16v16H0V0z' fill='none'/%3e%3cpath d='M0 0h16v1H0V0zm0 15h16v1H0v-1z' fill='%23ffffff' fill-opacity='0.1'/%3e%3c/svg%3e");
+  }
+
+  .bg-competition-hero {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  }
+}
