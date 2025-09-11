@@ -3,6 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 import {
   Bell,
   Calendar,
+  Search,
   User,
   Menu,
   X,
@@ -11,12 +12,16 @@ import {
   Settings,
   BarChart3,
   Briefcase,
+  Shield,
   Info,
   Rocket,
   Building2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -31,7 +36,7 @@ import { useBalance } from "@/contexts/BalanceContext";
 export default function Navbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const location = useLocation();
-  const { isAdmin } = useUserRole();
+  const { userRole, toggleUserRole, isAdmin } = useUserRole();
   const { balance } = useBalance();
 
   const participantNavigation = [
@@ -95,6 +100,25 @@ export default function Navbar() {
 
         {/* User Menu & Notifications */}
         <div className="flex items-center space-x-2">
+          {/* Role Toggle */}
+          <div className="hidden md:flex items-center space-x-2 mr-4">
+            <div className="flex items-center space-x-2">
+              <User className="h-4 w-4 text-muted-foreground" />
+              <Label htmlFor="role-toggle" className="text-sm text-muted-foreground">
+                Thí sinh
+              </Label>
+              <Switch
+                id="role-toggle"
+                checked={isAdmin}
+                onCheckedChange={toggleUserRole}
+              />
+              <Briefcase className="h-4 w-4 text-muted-foreground" />
+              <Label htmlFor="role-toggle" className="text-sm text-muted-foreground">
+                Ban tổ chức
+              </Label>
+            </div>
+          </div>
+
           {/* Notifications */}
           <Button variant="ghost" size="icon" className="relative">
             <Bell className="h-5 w-5" />
@@ -189,6 +213,22 @@ export default function Navbar() {
       {isMobileMenuOpen && (
         <div className="md:hidden border-t bg-background">
           <div className="w-full py-4 space-y-3 px-4 md:px-6 lg:px-8">
+            {/* Mobile Role Toggle */}
+            <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+              <div className="flex items-center space-x-2">
+                <User className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm">Thí sinh</span>
+              </div>
+              <Switch
+                checked={isAdmin}
+                onCheckedChange={toggleUserRole}
+              />
+              <div className="flex items-center space-x-2">
+                <Briefcase className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm">Ban tổ chức</span>
+              </div>
+            </div>
+
             {/* Mobile Navigation */}
             <nav className="space-y-1">
               {currentNavigation.map((item) => {

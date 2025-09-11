@@ -2,17 +2,15 @@ import CompetitionCard from "@/components/CompetitionCard";
 import { mockCompetitions, mockUsers, competitionCategories } from "@/lib/mockData";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
-import { Card,  CardHeader } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { CheckCircle, School, MapPin, Star, Target, Calendar as CalendarIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
-import { Search, ArrowRight, Users } from "lucide-react";
-import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer";
+import { Search, ArrowRight, Trophy, Users } from "lucide-react";
 
-function UserCard({ user }: { user: any }) {
+function UserCard({ user }) {
   const navigate = useNavigate();
   return (
     <Card className="card-hover cursor-pointer" onClick={() => navigate(`/user/${user.id}`)}>
@@ -23,7 +21,7 @@ function UserCard({ user }: { user: any }) {
             <AvatarFallback className="text-lg">
               {user.fullName
                 .split(" ")
-                .map((n: string) => n[0])
+                .map((n) => n[0])
                 .join("")}
             </AvatarFallback>
           </Avatar>
@@ -84,7 +82,6 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar />
       {/* Hero Section */}
       <section className="relative overflow-hidden bg-competition-hero py-20">
         <div className="absolute inset-0 bg-grid-white/10 bg-grid-16" />
@@ -215,7 +212,6 @@ export default function Home() {
           </div>
         </section>
       </div>
-      <Footer />
     </div>
   );
 } 

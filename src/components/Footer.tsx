@@ -1,4 +1,4 @@
-import { Trophy, Mail, Phone, MapPin, Github, Linkedin, Facebook, Twitter } from "lucide-react";
+import { Trophy, Users, Mail, Phone, MapPin, Github, Linkedin, Facebook, Twitter } from "lucide-react";
 import { Link } from "react-router-dom";
 
 export default function Footer() {
