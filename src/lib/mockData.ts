@@ -1,6 +1,9 @@
 import {
   Competition,
   User,
+  Achievement,
+  UserSkill,
+  PortfolioItem,
   CommunityPost,
   ChatConversation,
   ChatMessage,

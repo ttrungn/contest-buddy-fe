@@ -101,14 +101,10 @@
   }
 
   .card-hover {
-    @apply transition-all duration-300 hover:shadow-lg hover:-translate-y-1;
+    @apply transition-all duration-300 hover:shadow-medium hover:-translate-y-1;
   }
 
   .bg-grid-16 {
     background-image: url("data:image/svg+xml,%3csvg width='16' height='16' viewBox='0 0 16 16' fill='none' xmlns='http://www.w3.org/2000/svg'%3e%3cpath d='M0 0h16v16H0V0z' fill='none'/%3e%3cpath d='M0 0h16v1H0V0zm0 15h16v1H0v-1z' fill='%23ffffff' fill-opacity='0.1'/%3e%3c/svg%3e");
-  }
-
-  .bg-competition-hero {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   }
 }
