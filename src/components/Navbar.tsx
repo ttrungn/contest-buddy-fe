@@ -16,12 +16,12 @@ import {
   Info,
   Rocket,
   Building2,
+  LogIn,
+  UserPlus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -30,14 +30,21 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
-import { useUserRole } from "@/contexts/UserRoleContext";
 import { useBalance } from "@/contexts/BalanceContext";
+import { useAppSelector, useAppDispatch } from "@/services/store/store";
+import { logout } from "@/services/features/auth/authSlice";
+import { isAdmin, isOrganizer, isCustomer, isManager, getPrimaryRole, getRoleDisplayName, getRoleBadgeVariant } from "@/lib/roleUtils";
 
 export default function Navbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const location = useLocation();
-  const { userRole, toggleUserRole, isAdmin } = useUserRole();
   const { balance } = useBalance();
+  const { isAuthenticated, user } = useAppSelector((state) => state.auth);
+  const dispatch = useAppDispatch();
+
+  const handleLogout = () => {
+    dispatch(logout());
+  };
 
   const participantNavigation = [
     { name: "Trang chủ", href: "/home", icon: Rocket },
@@ -52,7 +59,15 @@ export default function Navbar() {
     { name: "Thanh toán", href: "/admin/billing", icon: Briefcase },
   ];
 
-  const currentNavigation = isAdmin ? organizerNavigation : participantNavigation;
+  // Determine navigation based on user role from auth state
+  const userIsAdmin = isAdmin(user);
+  const userIsOrganizer = isOrganizer(user);
+  const userIsCustomer = isCustomer(user);
+  const userIsManager = isManager(user);
+  const primaryRole = getPrimaryRole(user);
+
+  // Navigation logic: Admin and Organizer see management navigation, Customer sees participant navigation
+  const currentNavigation = isAuthenticated && userIsManager ? organizerNavigation : participantNavigation;
 
   const isActivePage = (href: string) => {
     if (href === "/") return location.pathname === "/";
@@ -68,10 +83,10 @@ export default function Navbar() {
             <Rocket className="h-5 w-5" />
           </div>
           <span className="text-xl font-bold gradient-text">Contest Buddy</span>
-          {isAdmin && (
-            <Badge variant="destructive" className="ml-2">
+          {isAuthenticated && primaryRole && (
+            <Badge variant={getRoleBadgeVariant(primaryRole)} className="ml-2">
               <Briefcase className="h-3 w-3 mr-1" />
-              Ban tổ chức
+              {getRoleDisplayName(primaryRole)}
             </Badge>
           )}
         </Link>
@@ -100,25 +115,6 @@ export default function Navbar() {
 
         {/* User Menu & Notifications */}
         <div className="flex items-center space-x-2">
-          {/* Role Toggle */}
-          <div className="hidden md:flex items-center space-x-2 mr-4">
-            <div className="flex items-center space-x-2">
-              <User className="h-4 w-4 text-muted-foreground" />
-              <Label htmlFor="role-toggle" className="text-sm text-muted-foreground">
-                Thí sinh
-              </Label>
-              <Switch
-                id="role-toggle"
-                checked={isAdmin}
-                onCheckedChange={toggleUserRole}
-              />
-              <Briefcase className="h-4 w-4 text-muted-foreground" />
-              <Label htmlFor="role-toggle" className="text-sm text-muted-foreground">
-                Ban tổ chức
-              </Label>
-            </div>
-          </div>
-
           {/* Notifications */}
           <Button variant="ghost" size="icon" className="relative">
             <Bell className="h-5 w-5" />
@@ -137,59 +133,89 @@ export default function Navbar() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
-              {isAdmin ? (
+              {isAuthenticated ? (
                 <>
                   <div className="px-3 py-2 border-b">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium">Số dư:</span>
-                      <span className="text-sm font-bold text-green-600">{balance.toLocaleString()} VNĐ</span>
+                    <div className="flex items-center space-x-2">
+                      <div className="h-8 w-8 rounded-full bg-gradient-to-r from-primary to-purple-500 flex items-center justify-center">
+                        <User className="h-4 w-4 text-white" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium">{user?.full_name}</p>
+                        <p className="text-xs text-muted-foreground">{user?.email}</p>
+                      </div>
                     </div>
                   </div>
+                  {userIsManager ? (
+                    <>
+                      <div className="px-3 py-2 border-b">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium">Số dư:</span>
+                          <span className="text-sm font-bold text-green-600">{balance.toLocaleString()} VNĐ</span>
+                        </div>
+                      </div>
+                      <DropdownMenuItem asChild>
+                        <Link to="/organizer-profile" className="flex items-center">
+                          <Building2 className="mr-2 h-4 w-4" />
+                          <span>Thông tin Ban tổ chức</span>
+                        </Link>
+                      </DropdownMenuItem>
+                    </>
+                  ) : (
+                    <>
+                      <DropdownMenuItem asChild>
+                        <Link to="/profile" className="flex items-center">
+                          <User className="mr-2 h-4 w-4" />
+                          <span>Hồ sơ của tôi</span>
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link to="/my-competitions" className="flex items-center">
+                          <Trophy className="mr-2 h-4 w-4" />
+                          <span>Cuộc thi của tôi</span>
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link to="/calendar" className="flex items-center">
+                          <Calendar className="mr-2 h-4 w-4" />
+                          <span>Lịch thi</span>
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link to="/teams" className="flex items-center">
+                          <Users className="mr-2 h-4 w-4" />
+                          <span>Nhóm</span>
+                        </Link>
+                      </DropdownMenuItem>
+                    </>
+                  )}
                   <DropdownMenuItem asChild>
-                    <Link to="/organizer-profile" className="flex items-center">
-                      <Building2 className="mr-2 h-4 w-4" />
-                      <span>Thông tin Ban tổ chức</span>
+                    <Link to="/settings" className="flex items-center">
+                      <Settings className="mr-2 h-4 w-4" />
+                      <span>Cài đặt</span>
                     </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleLogout}>
+                    <span>Đăng xuất</span>
                   </DropdownMenuItem>
                 </>
               ) : (
                 <>
                   <DropdownMenuItem asChild>
-                    <Link to="/profile" className="flex items-center">
-                      <User className="mr-2 h-4 w-4" />
-                      <span>Hồ sơ của tôi</span>
+                    <Link to="/login" className="flex items-center">
+                      <LogIn className="mr-2 h-4 w-4" />
+                      <span>Đăng nhập</span>
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
-                    <Link to="/my-competitions" className="flex items-center">
-                      <Trophy className="mr-2 h-4 w-4" />
-                      <span>Cuộc thi của tôi</span>
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link to="/calendar" className="flex items-center">
-                      <Calendar className="mr-2 h-4 w-4" />
-                      <span>Lịch thi</span>
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link to="/teams" className="flex items-center">
-                      <Users className="mr-2 h-4 w-4" />
-                      <span>Nhóm</span>
+                    <Link to="/login?mode=register" className="flex items-center">
+                      <UserPlus className="mr-2 h-4 w-4" />
+                      <span>Đăng ký</span>
                     </Link>
                   </DropdownMenuItem>
                 </>
               )}
-              <DropdownMenuItem asChild>
-                <Link to="/settings" className="flex items-center">
-                  <Settings className="mr-2 h-4 w-4" />
-                  <span>Cài đặt</span>
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem>
-                <span>Đăng xuất</span>
-              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
 
@@ -213,22 +239,6 @@ export default function Navbar() {
       {isMobileMenuOpen && (
         <div className="md:hidden border-t bg-background">
           <div className="w-full py-4 space-y-3 px-4 md:px-6 lg:px-8">
-            {/* Mobile Role Toggle */}
-            <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-              <div className="flex items-center space-x-2">
-                <User className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm">Thí sinh</span>
-              </div>
-              <Switch
-                checked={isAdmin}
-                onCheckedChange={toggleUserRole}
-              />
-              <div className="flex items-center space-x-2">
-                <Briefcase className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm">Ban tổ chức</span>
-              </div>
-            </div>
-
             {/* Mobile Navigation */}
             <nav className="space-y-1">
               {currentNavigation.map((item) => {
@@ -250,8 +260,8 @@ export default function Navbar() {
                   </Link>
                 );
               })}
-              {/* Additional mobile menu items for participants */}
-              {!isAdmin && (
+              {/* Additional mobile menu items for customers */}
+              {userIsCustomer && (
                 <>
                   <Link
                     to="/calendar"
