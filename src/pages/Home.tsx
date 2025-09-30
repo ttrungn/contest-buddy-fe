@@ -8,7 +8,8 @@ import { CheckCircle, School, MapPin, Star, Target, Calendar as CalendarIcon } f
 import { cn } from "@/lib/utils";
 import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
-import { Search, ArrowRight, Trophy, Users } from "lucide-react";
+import { Search, ArrowRight, Trophy, Users, Building2 } from "lucide-react";
+import { useAppSelector } from "@/services/store/store";
 
 function UserCard({ user }) {
   const navigate = useNavigate();
@@ -77,6 +78,7 @@ function UserCard({ user }) {
 
 export default function Home() {
   const navigate = useNavigate();
+  const { isAuthenticated } = useAppSelector((state) => state.auth);
   const competitions = mockCompetitions.slice(0, 5);
   const users = mockUsers.slice(0, 5);
 
@@ -115,6 +117,19 @@ export default function Home() {
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Link>
               </Button>
+              {!isAuthenticated && (
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="bg-white/10 text-white border-white/30 hover:bg-white/20"
+                  asChild
+                >
+                  <Link to="/register/organizer">
+                    <Building2 className="mr-2 h-5 w-5" />
+                    Đăng ký tổ chức
+                  </Link>
+                </Button>
+              )}
             </div>
           </div>
         </div>
@@ -211,6 +226,63 @@ export default function Home() {
             </div>
           </div>
         </section>
+
+        {/* Organizer CTA Section */}
+        {!isAuthenticated && (
+          <section className="py-16 bg-gradient-to-r from-purple-600 to-blue-600">
+            <div className="container px-4 sm:px-6 lg:px-8">
+              <div className="text-center text-white">
+                <div className="w-16 h-16 bg-white/20 rounded-lg flex items-center justify-center mx-auto mb-6">
+                  <Building2 className="h-8 w-8 text-white" />
+                </div>
+                <h2 className="text-3xl font-bold mb-4">
+                  Bạn là tổ chức muốn tổ chức cuộc thi?
+                </h2>
+                <p className="text-lg text-white/90 mb-8 max-w-2xl mx-auto">
+                  Tham gia với chúng tôi để tiếp cận hàng nghìn thí sinh tài năng và tổ chức các cuộc thi chất lượng cao.
+                  Hệ thống quản lý toàn diện giúp bạn dễ dàng tổ chức và theo dõi cuộc thi.
+                </p>
+                <div className="flex flex-col sm:flex-row justify-center gap-4">
+                  <Button
+                    size="lg"
+                    className="bg-white text-purple-600 hover:bg-white/90"
+                    asChild
+                  >
+                    <Link to="/register/organizer">
+                      <Building2 className="mr-2 h-5 w-5" />
+                      Đăng ký tài khoản tổ chức
+                    </Link>
+                  </Button>
+                  <Button
+                    size="lg"
+                    variant="outline"
+                    className="border-white text-white hover:bg-white/10"
+                    asChild
+                  >
+                    <Link to="/about">
+                      Tìm hiểu thêm
+                      <ArrowRight className="ml-2 h-5 w-5" />
+                    </Link>
+                  </Button>
+                </div>
+                <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6 text-sm">
+                  <div className="flex items-center justify-center">
+                    <CheckCircle className="h-5 w-5 mr-2" />
+                    <span>Miễn phí đăng ký</span>
+                  </div>
+                  <div className="flex items-center justify-center">
+                    <CheckCircle className="h-5 w-5 mr-2" />
+                    <span>Hỗ trợ 24/7</span>
+                  </div>
+                  <div className="flex items-center justify-center">
+                    <CheckCircle className="h-5 w-5 mr-2" />
+                    <span>Duyệt nhanh chóng</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
       </div>
     </div>
   );

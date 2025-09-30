@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Trophy, User, Building2, Mail, Lock, Eye, EyeOff } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Trophy, User, Building2, Mail, Lock, Eye, EyeOff, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -7,6 +7,7 @@ import { useAppDispatch, useAppSelector } from "@/services/store/store";
 import { registerUser, loginUser, clearError } from "@/services/features/auth/authSlice";
 import { RegisterRequest, LoginRequest } from "@/interfaces/IAuth";
 import { useToast } from "@/hooks/use-toast";
+import { useNavigate } from "react-router-dom";
 
 interface AuthLayoutProps {
     initialMode?: "login" | "register";
@@ -16,8 +17,23 @@ export default function AuthLayout({ initialMode = "login" }: AuthLayoutProps) {
     const [mode, setMode] = useState<"login" | "register">(initialMode);
     const [showPassword, setShowPassword] = useState(false);
     const dispatch = useAppDispatch();
-    const { isLoading, error } = useAppSelector((state) => state.auth);
+    const navigate = useNavigate();
+    const { isLoading, error, isAuthenticated, needsVerification, verificationEmail } = useAppSelector((state) => state.auth);
     const { toast } = useToast();
+
+    // Check for needsVerification and redirect
+    useEffect(() => {
+        if (needsVerification && verificationEmail) {
+            toast({
+                title: "Email chưa được xác thực",
+                description: "Bạn cần xác thực email trước khi đăng nhập",
+                variant: "destructive",
+            });
+            navigate('/resend-verification', {
+                state: { email: verificationEmail }
+            });
+        }
+    }, [needsVerification, verificationEmail, navigate, toast]);
 
     // Register form state
     const [registerData, setRegisterData] = useState<RegisterRequest>({
@@ -72,10 +88,19 @@ export default function AuthLayout({ initialMode = "login" }: AuthLayoutProps) {
             });
             // Redirect to home page or dashboard
             window.location.href = "/";
-        } catch (error) {
+        } catch (error: any) {
+            // Handle error properly - error is an object with message property
+            let errorMessage = "Đăng nhập thất bại";
+
+            if (typeof error === 'string') {
+                errorMessage = error;
+            } else if (error && typeof error === 'object') {
+                errorMessage = error.message || errorMessage;
+            }
+
             toast({
                 title: "Đăng nhập thất bại",
-                description: error as string,
+                description: errorMessage,
                 variant: "destructive",
             });
         }
@@ -90,7 +115,18 @@ export default function AuthLayout({ initialMode = "login" }: AuthLayoutProps) {
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-purple-100 via-white to-pink-100 flex items-center justify-center p-4">
+        <div className="min-h-screen bg-gradient-to-br from-purple-100 via-white to-pink-100 flex items-center justify-center p-4 relative">
+            {/* Back to Home Button */}
+            <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => window.location.href = "/"}
+                className="absolute top-4 left-4 flex items-center gap-2 text-muted-foreground hover:text-foreground z-10"
+            >
+                <ArrowLeft className="h-4 w-4" />
+                <span>Về trang chủ</span>
+            </Button>
+
             <div className="w-full max-w-md">
                 {/* Header */}
                 <div className="text-center mb-8">
@@ -320,14 +356,18 @@ export default function AuthLayout({ initialMode = "login" }: AuthLayoutProps) {
                             <Button type="submit" className="w-full" disabled={isLoading}>
                                 {isLoading ? "Đang đăng nhập..." : "Đăng nhập"}
                             </Button>
-                        </form>
-                    )}
 
-                    {/* Error Display */}
-                    {error && (
-                        <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-                            <p className="text-sm text-red-600">{error}</p>
-                        </div>
+                            {/* Forgot Password Link */}
+                            <div className="text-center">
+                                <button
+                                    type="button"
+                                    onClick={() => navigate('/forgot-password')}
+                                    className="text-sm text-primary hover:underline"
+                                >
+                                    Quên mật khẩu?
+                                </button>
+                            </div>
+                        </form>
                     )}
 
                     {/* Terms and Conditions for Register */}
@@ -343,6 +383,33 @@ export default function AuthLayout({ initialMode = "login" }: AuthLayoutProps) {
                                     Chính sách bảo mật
                                 </a>
                             </p>
+                        </div>
+                    )}
+
+                    {/* Organizer Registration CTA */}
+                    {!isAuthenticated && (
+                        <div className="mt-6 p-4 bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg border border-purple-100">
+                            <div className="text-center space-y-3">
+                                <div className="flex items-center justify-center">
+                                    <Building2 className="h-8 w-8 text-purple-600" />
+                                </div>
+                                <div>
+                                    <h3 className="font-semibold text-gray-900 mb-1">
+                                        Bạn muốn đăng ký ban tổ chức?
+                                    </h3>
+                                    <p className="text-sm text-gray-600 mb-3">
+                                        Tạo tài khoản tổ chức để tổ chức và quản lý các cuộc thi chuyên nghiệp
+                                    </p>
+                                </div>
+                                <Button
+                                    variant="outline"
+                                    className="w-full bg-white border-purple-200 text-purple-700 hover:bg-purple-50 hover:border-purple-300"
+                                    onClick={() => navigate("/register/organizer")}
+                                >
+                                    <Building2 className="mr-2 h-4 w-4" />
+                                    Đăng ký tài khoản tổ chức
+                                </Button>
+                            </div>
                         </div>
                     )}
                 </div>

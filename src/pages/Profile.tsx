@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   User,
   MapPin,
@@ -19,12 +19,118 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
-import { mockUsers, skillCategories } from "@/lib/mockData";
+import { skillCategories } from "@/lib/mockData";
 import { cn } from "@/lib/utils";
+import { useAppDispatch, useAppSelector } from "@/services/store/store";
+import { fetchCustomerProfile, uploadCustomerAvatar, updateCustomerProfile } from "@/services/features/users/userSlice";
+import { useToast } from "@/hooks/use-toast";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 
 export default function Profile() {
-  const [activeUser] = useState(mockUsers[0]); // Mock current user
+  const dispatch = useAppDispatch();
+  const { toast } = useToast();
+  const { profile, isLoading } = useAppSelector((s) => s.user);
   const [isEditing, setIsEditing] = useState(false);
+  const [editData, setEditData] = useState({
+    full_name: "",
+    email: "",
+    bio: "",
+    school: "",
+    city: "",
+    region: "",
+    country: "",
+    study_field: "",
+    social_links: { github: "", linkedin: "", personal: "" },
+  });
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = (typeof window !== "undefined") ? (document.createElement("input") as HTMLInputElement) : null;
+
+  useEffect(() => {
+    dispatch(fetchCustomerProfile());
+  }, [dispatch]);
+
+  useEffect(() => {
+    if (profile) {
+      setEditData({
+        full_name: profile.full_name || "",
+        email: profile.email || "",
+        bio: profile.bio || "",
+        school: profile.school || "",
+        city: profile.city || "",
+        region: profile.region || "",
+        country: profile.country || "",
+        study_field: profile.study_field || "",
+        social_links: {
+          github: profile.social_links?.github || "",
+          linkedin: profile.social_links?.linkedin || "",
+          personal: profile.social_links?.personal || "",
+        },
+      });
+    }
+  }, [profile]);
+
+  const activeUser = useMemo(() => {
+    if (!profile) return null;
+    return {
+      fullName: profile.full_name,
+      username: profile.username,
+      avatar: profile.avatarUrl || profile.avatar_url || "",
+      rating: profile.rating || 0,
+      isVerified: true,
+      bio: profile.bio || "",
+      school: profile.school || "",
+      location: { city: profile.city || "", region: profile.region || "" },
+      studyField: profile.study_field || "",
+      joinDate: new Date(profile.join_date),
+      socialLinks: {
+        github: profile.social_links?.github || "",
+        linkedin: profile.social_links?.linkedin || "",
+        behance: "",
+      },
+      achievements: [],
+      portfolio: [],
+      skills: [],
+    };
+  }, [profile]);
+
+  const handleAvatarClick = () => {
+    if (!fileInputRef) return;
+    fileInputRef.type = "file";
+    fileInputRef.accept = "image/*";
+    fileInputRef.onchange = async (e: any) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      setUploading(true);
+      try {
+        const res = await dispatch(uploadCustomerAvatar(file)).unwrap();
+        if (res.success) {
+          toast({ title: "Cập nhật ảnh đại diện thành công" });
+          dispatch(fetchCustomerProfile());
+        } else {
+          toast({ title: "Tải ảnh thất bại", variant: "destructive" });
+        }
+      } catch (err: any) {
+        toast({ title: "Tải ảnh thất bại", description: String(err), variant: "destructive" });
+      } finally {
+        setUploading(false);
+        fileInputRef.value = "";
+      }
+    };
+    fileInputRef.click();
+  };
+
+  const handleSave = async () => {
+    try {
+      await dispatch(updateCustomerProfile(editData)).unwrap();
+      toast({ title: "Cập nhật hồ sơ thành công" });
+      setIsEditing(false);
+      dispatch(fetchCustomerProfile());
+    } catch (err: any) {
+      toast({ title: "Cập nhật thất bại", description: String(err), variant: "destructive" });
+    }
+  };
 
   const getSkillLevelLabel = (level: string) => {
     const labels = {
@@ -54,6 +160,20 @@ export default function Profile() {
     }).format(new Date(date));
   };
 
+  if (!activeUser) {
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="container py-8">
+          <Card className="mb-8">
+            <CardContent className="pt-6">
+              <div className="text-sm text-muted-foreground">{isLoading ? "Đang tải hồ sơ..." : "Không thể tải hồ sơ"}</div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <div className="container py-8">
@@ -63,7 +183,7 @@ export default function Profile() {
             <div className="flex flex-col md:flex-row items-start gap-6">
               {/* Avatar and Basic Info */}
               <div className="flex flex-col items-center text-center md:text-left">
-                <Avatar className="h-24 w-24 mb-4">
+                <Avatar className="h-24 w-24 mb-2">
                   <AvatarImage
                     src={activeUser.avatar}
                     alt={activeUser.fullName}
@@ -75,6 +195,9 @@ export default function Profile() {
                       .join("")}
                   </AvatarFallback>
                 </Avatar>
+                <Button size="sm" variant="outline" onClick={handleAvatarClick} disabled={uploading}>
+                  {uploading ? "Đang tải..." : "Đổi ảnh đại diện"}
+                </Button>
                 <div className="flex items-center gap-2">
                   <div className="flex items-center">
                     {[...Array(5)].map((_, i) => (
@@ -111,17 +234,75 @@ export default function Profile() {
                       @{activeUser.username}
                     </p>
                   </div>
-                  <Button
-                    onClick={() => setIsEditing(!isEditing)}
-                    variant="outline"
-                    size="sm"
-                  >
-                    <Edit className="h-4 w-4 mr-2" />
-                    Chỉnh sửa
-                  </Button>
+                  <div className="flex gap-2">
+                    {isEditing ? (
+                      <>
+                        <Button onClick={handleSave} size="sm">Lưu</Button>
+                        <Button onClick={() => setIsEditing(false)} variant="outline" size="sm">Hủy</Button>
+                      </>
+                    ) : (
+                      <Button
+                        onClick={() => setIsEditing(true)}
+                        variant="outline"
+                        size="sm"
+                      >
+                        <Edit className="h-4 w-4 mr-2" />
+                        Chỉnh sửa
+                      </Button>
+                    )}
+                  </div>
                 </div>
 
-                <p className="text-muted-foreground mb-4">{activeUser.bio}</p>
+                {isEditing ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div className="space-y-1">
+                      <Label>Họ và tên</Label>
+                      <Input value={editData.full_name} onChange={(e) => setEditData({ ...editData, full_name: e.target.value })} />
+                    </div>
+                    <div className="space-y-1">
+                      <Label>Email</Label>
+                      <Input type="email" value={editData.email} onChange={(e) => setEditData({ ...editData, email: e.target.value })} />
+                    </div>
+                    <div className="space-y-1 md:col-span-2">
+                      <Label>Giới thiệu</Label>
+                      <Textarea rows={3} value={editData.bio} onChange={(e) => setEditData({ ...editData, bio: e.target.value })} />
+                    </div>
+                    <div className="space-y-1">
+                      <Label>Trường</Label>
+                      <Input value={editData.school} onChange={(e) => setEditData({ ...editData, school: e.target.value })} />
+                    </div>
+                    <div className="space-y-1">
+                      <Label>Thành phố</Label>
+                      <Input value={editData.city} onChange={(e) => setEditData({ ...editData, city: e.target.value })} />
+                    </div>
+                    <div className="space-y-1">
+                      <Label>Khu vực</Label>
+                      <Input value={editData.region} onChange={(e) => setEditData({ ...editData, region: e.target.value })} />
+                    </div>
+                    <div className="space-y-1">
+                      <Label>Quốc gia</Label>
+                      <Input value={editData.country} onChange={(e) => setEditData({ ...editData, country: e.target.value })} />
+                    </div>
+                    <div className="space-y-1">
+                      <Label>Ngành học</Label>
+                      <Input value={editData.study_field} onChange={(e) => setEditData({ ...editData, study_field: e.target.value })} />
+                    </div>
+                    <div className="space-y-1">
+                      <Label>GitHub</Label>
+                      <Input value={editData.social_links.github} onChange={(e) => setEditData({ ...editData, social_links: { ...editData.social_links, github: e.target.value } })} />
+                    </div>
+                    <div className="space-y-1">
+                      <Label>LinkedIn</Label>
+                      <Input value={editData.social_links.linkedin} onChange={(e) => setEditData({ ...editData, social_links: { ...editData.social_links, linkedin: e.target.value } })} />
+                    </div>
+                    <div className="space-y-1 md:col-span-2">
+                      <Label>Website cá nhân</Label>
+                      <Input value={editData.social_links.personal} onChange={(e) => setEditData({ ...editData, social_links: { ...editData.social_links, personal: e.target.value } })} />
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-muted-foreground mb-4">{activeUser.bio}</p>
+                )}
 
                 {/* Location and School */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
@@ -511,8 +692,8 @@ export default function Profile() {
                         </div>
                         {category.name !==
                           skillCategories[skillCategories.length - 1].name && (
-                          <Separator className="mt-6" />
-                        )}
+                            <Separator className="mt-6" />
+                          )}
                       </div>
                     );
                   })}

@@ -21,10 +21,16 @@ const queryClient = new QueryClient();
 // Layout wrapper component to conditionally show navbar/footer
 const LayoutWrapper = () => {
   const location = useLocation();
-  const isAuthPage = location.pathname === '/login';
+  const isAuthPage = location.pathname === '/login' ||
+    location.pathname === '/register/organizer' ||
+    location.pathname === '/resend-verification' ||
+    location.pathname === '/forgot-password' ||
+    location.pathname === '/reset-password' ||
+    location.pathname.startsWith('/verify-email') ||
+    location.pathname.startsWith('/reset-password/');
 
   if (isAuthPage) {
-    // Full screen layout for auth pages
+    // Full screen layout for auth pages and verification pages
     return <AppRouter />;
   }
 
