@@ -1,4 +1,4 @@
-export const BASE_URL = "http://localhost:3000";
+export const BASE_URL = "https://contest-buddy-be-594444870778.asia-southeast1.run.app";
 
 // Auth endpoints
 export const LOGIN_ENDPOINT = `${BASE_URL}/api/auth/login`;
