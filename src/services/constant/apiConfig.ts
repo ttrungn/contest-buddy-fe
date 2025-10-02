@@ -18,3 +18,10 @@ export const CHANGE_PASSWORD_ENDPOINT = `${BASE_URL}/api/auth/change-password`;
 // Customer profile endpoints
 export const CUSTOMER_PROFILE_ENDPOINT = `${BASE_URL}/api/customer/profile`;
 export const CUSTOMER_AVATAR_ENDPOINT = `${BASE_URL}/api/customer/avatar`;
+
+// User skills endpoints
+export const USER_SKILLS_ENDPOINT = `${BASE_URL}/api/user/skills`;
+export const ALL_SKILLS_ENDPOINT = `${BASE_URL}/api/skills`;
+
+// User portfolio projects endpoints
+export const USER_PROJECTS_ENDPOINT = `${BASE_URL}/api/user/projects`;

@@ -3,6 +3,9 @@ import { api } from "@/services/constant/axiosInstance";
 import {
   CUSTOMER_PROFILE_ENDPOINT,
   CUSTOMER_AVATAR_ENDPOINT,
+  USER_SKILLS_ENDPOINT,
+  ALL_SKILLS_ENDPOINT,
+  USER_PROJECTS_ENDPOINT,
 } from "@/services/constant/apiConfig";
 import {
   CustomerProfile,
@@ -11,17 +14,171 @@ import {
   UpdateCustomerProfileResponse,
 } from "@/interfaces/IUser";
 
+export interface UserSkill {
+  _id: string;
+  user_id: string;
+  skill_name: string;
+  category: string;
+  level: string;
+  experience_years: number;
+}
+
+export interface AllSkill {
+  _id: string;
+  name: string;
+  category: string;
+}
+
+export interface SkillResponse {
+  success: boolean;
+  skills: UserSkill[];
+}
+
+export interface AllSkillsResponse {
+  success: boolean;
+  skills: AllSkill[];
+}
+
+export interface AddSkillRequest {
+  skill_name: string;
+  category: string;
+  level: string;
+  experience_years: number;
+}
+
+export interface AddSkillResponse {
+  success: boolean;
+  message: string;
+  skill: UserSkill;
+}
+
+export interface UpdateSkillRequest {
+  skillId: string;
+  data: {
+    level: string;
+    experience_years: number;
+  };
+}
+
+export interface UpdateSkillResponse {
+  success: boolean;
+  message: string;
+  skill: UserSkill;
+}
+
 interface UserState {
   profile: CustomerProfile | null;
+  userSkills: UserSkill[];
+  allSkills: AllSkill[];
+  projects: UserProject[];
   isLoading: boolean;
   error: string | null;
 }
 
 const initialState: UserState = {
   profile: null,
+  userSkills: [],
+  allSkills: [],
+  projects: [],
   isLoading: false,
   error: null,
 };
+
+// ===== Portfolio Projects =====
+export interface UserProject {
+  _id: string;
+  id: string;
+  user_id: string;
+  title: string;
+  description: string;
+  category: string;
+  tags: string[];
+  image_url: string | null;
+  project_url?: string;
+  github_url?: string;
+  created_at: string;
+}
+
+export interface UserProjectsResponse {
+  success: boolean;
+  projects: UserProject[];
+}
+
+export interface AddProjectResponse {
+  success: boolean;
+  message: string;
+  project: UserProject;
+}
+
+export interface UpdateProjectResponse {
+  success: boolean;
+  message: string;
+  project: UserProject;
+}
+
+export const fetchUserProjects = createAsyncThunk<
+  UserProject[],
+  void,
+  { rejectValue: string }
+>("user/fetchUserProjects", async (_, { rejectWithValue }) => {
+  try {
+    const res = await api.get<UserProjectsResponse>(USER_PROJECTS_ENDPOINT);
+    return res.projects || [];
+  } catch (err: any) {
+    return rejectWithValue(
+      err.response?.data?.message || "Lỗi tải danh sách dự án",
+    );
+  }
+});
+
+export const addUserProject = createAsyncThunk<
+  UserProject,
+  FormData,
+  { rejectValue: string }
+>("user/addUserProject", async (formData, { rejectWithValue }) => {
+  try {
+    const res = await api.upload<AddProjectResponse>(
+      USER_PROJECTS_ENDPOINT,
+      formData,
+    );
+    return res.project;
+  } catch (err: any) {
+    return rejectWithValue(
+      err.response?.data?.message || "Thêm dự án thất bại",
+    );
+  }
+});
+
+export const updateUserProject = createAsyncThunk<
+  UserProject,
+  { projectId: string; data: FormData },
+  { rejectValue: string }
+>("user/updateUserProject", async (payload, { rejectWithValue }) => {
+  try {
+    const res = await api.uploadPut<UpdateProjectResponse>(
+      `${USER_PROJECTS_ENDPOINT}/${payload.projectId}`,
+      payload.data,
+    );
+    return res.project;
+  } catch (err: any) {
+    return rejectWithValue(
+      err.response?.data?.message || "Cập nhật dự án thất bại",
+    );
+  }
+});
+
+export const deleteUserProject = createAsyncThunk<
+  string,
+  string,
+  { rejectValue: string }
+>("user/deleteUserProject", async (projectId, { rejectWithValue }) => {
+  try {
+    await api.delete(`${USER_PROJECTS_ENDPOINT}/${projectId}`);
+    return projectId;
+  } catch (err: any) {
+    return rejectWithValue(err.response?.data?.message || "Xóa dự án thất bại");
+  }
+});
 
 export const fetchCustomerProfile = createAsyncThunk<
   CustomerProfile,
@@ -80,12 +237,105 @@ export const uploadCustomerAvatar = createAsyncThunk<
   }
 });
 
+// Skill management async thunks
+export const fetchUserSkills = createAsyncThunk<
+  UserSkill[],
+  void,
+  { rejectValue: string }
+>("user/fetchUserSkills", async (_, { rejectWithValue }) => {
+  try {
+    const res = await api.get<SkillResponse>(USER_SKILLS_ENDPOINT);
+    if (res.success && res.skills) return res.skills;
+    return rejectWithValue("Không lấy được danh sách kỹ năng");
+  } catch (err: any) {
+    const message =
+      err.response?.data?.message || err.message || "Lỗi tải danh sách kỹ năng";
+    return rejectWithValue(message);
+  }
+});
+
+export const fetchAllSkills = createAsyncThunk<
+  AllSkill[],
+  void,
+  { rejectValue: string }
+>("user/fetchAllSkills", async (_, { rejectWithValue }) => {
+  try {
+    const res = await api.get<AllSkillsResponse>(ALL_SKILLS_ENDPOINT);
+    if (res.success && res.skills) return res.skills;
+    return rejectWithValue("Không lấy được danh sách tất cả kỹ năng");
+  } catch (err: any) {
+    const message =
+      err.response?.data?.message || err.message || "Lỗi tải danh sách kỹ năng";
+    return rejectWithValue(message);
+  }
+});
+
+export const addUserSkill = createAsyncThunk<
+  UserSkill,
+  AddSkillRequest,
+  { rejectValue: string }
+>("user/addUserSkill", async (payload, { rejectWithValue }) => {
+  try {
+    const res = await api.post<AddSkillResponse>(USER_SKILLS_ENDPOINT, payload);
+    if (res.success && res.skill) return res.skill;
+    return rejectWithValue("Thêm kỹ năng thất bại");
+  } catch (err: any) {
+    const message =
+      err.response?.data?.message || err.message || "Thêm kỹ năng thất bại";
+    return rejectWithValue(message);
+  }
+});
+
+export const updateUserSkill = createAsyncThunk<
+  UserSkill,
+  UpdateSkillRequest,
+  { rejectValue: string }
+>("user/updateUserSkill", async (payload, { rejectWithValue }) => {
+  try {
+    const response = await api.put(
+      `${USER_SKILLS_ENDPOINT}/${payload.skillId}`,
+      payload.data,
+    );
+    // API trả về { message, skill } không có success field
+    if (response && response.skill) {
+      return response.skill;
+    } else {
+      throw new Error("Invalid response format");
+    }
+  } catch (error: any) {
+    return rejectWithValue(
+      error.response?.data?.message || "Failed to update skill",
+    );
+  }
+});
+
+export const deleteUserSkill = createAsyncThunk<
+  string,
+  string,
+  { rejectValue: string }
+>("user/deleteUserSkill", async (skillId, { rejectWithValue }) => {
+  try {
+    const res = await api.delete<{ success: boolean; message: string }>(
+      `${USER_SKILLS_ENDPOINT}/${skillId}`,
+    );
+    if (res.success) return skillId;
+    return rejectWithValue("Xóa kỹ năng thất bại");
+  } catch (err: any) {
+    const message =
+      err.response?.data?.message || err.message || "Xóa kỹ năng thất bại";
+    return rejectWithValue(message);
+  }
+});
+
 const userSlice = createSlice({
   name: "user",
   initialState,
   reducers: {
     setLocalProfile(state, action: PayloadAction<CustomerProfile>) {
       state.profile = action.payload;
+    },
+    clearUserSkills(state) {
+      state.userSkills = [];
     },
   },
   extraReducers: (builder) => {
@@ -134,9 +384,127 @@ const userSlice = createSlice({
       .addCase(uploadCustomerAvatar.rejected, (state, action) => {
         state.isLoading = false;
         state.error = (action.payload as string) || "Tải ảnh đại diện thất bại";
+      })
+      // User skills reducers
+      .addCase(fetchUserSkills.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(fetchUserSkills.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.userSkills = action.payload;
+      })
+      .addCase(fetchUserSkills.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = (action.payload as string) || "Lỗi tải danh sách kỹ năng";
+      })
+      .addCase(fetchAllSkills.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(fetchAllSkills.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.allSkills = action.payload;
+      })
+      .addCase(fetchAllSkills.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = (action.payload as string) || "Lỗi tải danh sách kỹ năng";
+      })
+      .addCase(addUserSkill.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(addUserSkill.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.userSkills.push(action.payload);
+      })
+      .addCase(addUserSkill.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = (action.payload as string) || "Thêm kỹ năng thất bại";
+      })
+      // Projects
+      .addCase(fetchUserProjects.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(fetchUserProjects.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.projects = action.payload;
+      })
+      .addCase(fetchUserProjects.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = (action.payload as string) || "Lỗi tải danh sách dự án";
+      })
+      .addCase(addUserProject.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(addUserProject.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.projects.unshift(action.payload);
+      })
+      .addCase(addUserProject.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = (action.payload as string) || "Thêm dự án thất bại";
+      })
+      .addCase(updateUserProject.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(updateUserProject.fulfilled, (state, action) => {
+        state.isLoading = false;
+        const idx = state.projects.findIndex((p) => p.id === action.payload.id);
+        if (idx !== -1) state.projects[idx] = action.payload;
+      })
+      .addCase(updateUserProject.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = (action.payload as string) || "Cập nhật dự án thất bại";
+      })
+      .addCase(deleteUserProject.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(deleteUserProject.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.projects = state.projects.filter((p) => p.id !== action.payload);
+      })
+      .addCase(deleteUserProject.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = (action.payload as string) || "Xóa dự án thất bại";
+      })
+      .addCase(updateUserSkill.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(updateUserSkill.fulfilled, (state, action) => {
+        state.isLoading = false;
+        const index = state.userSkills.findIndex(
+          (skill) => skill._id === action.payload._id,
+        );
+        if (index !== -1) {
+          state.userSkills[index] = action.payload;
+        }
+      })
+      .addCase(updateUserSkill.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = (action.payload as string) || "Cập nhật kỹ năng thất bại";
+      })
+      .addCase(deleteUserSkill.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(deleteUserSkill.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.userSkills = state.userSkills.filter(
+          (skill) => skill._id !== action.payload,
+        );
+      })
+      .addCase(deleteUserSkill.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = (action.payload as string) || "Xóa kỹ năng thất bại";
       });
   },
 });
 
-export const { setLocalProfile } = userSlice.actions;
+export const { setLocalProfile, clearUserSkills } = userSlice.actions;
 export default userSlice.reducer;

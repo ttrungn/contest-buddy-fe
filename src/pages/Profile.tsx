@@ -11,6 +11,8 @@ import {
   ExternalLink,
   Plus,
   Edit,
+  Trash2,
+  Pencil,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -19,20 +21,52 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
-import { skillCategories } from "@/lib/mockData";
+import ProjectModal from "@/components/ProjectModal";
+// Define skill categories for display
+const skillCategories = [
+  { value: "technical", label: "Kỹ thuật" },
+  { value: "language", label: "Ngôn ngữ" },
+  { value: "design", label: "Thiết kế" },
+  { value: "business", label: "Kinh doanh" },
+  { value: "science", label: "Khoa học" },
+  { value: "communication", label: "Giao tiếp" },
+  { value: "leadership", label: "Lãnh đạo" },
+];
 import { cn } from "@/lib/utils";
 import { useAppDispatch, useAppSelector } from "@/services/store/store";
-import { fetchCustomerProfile, uploadCustomerAvatar, updateCustomerProfile } from "@/services/features/users/userSlice";
+import { fetchCustomerProfile, uploadCustomerAvatar, updateCustomerProfile, fetchUserSkills, deleteUserSkill, updateUserSkill, fetchUserProjects, addUserProject, updateUserProject, deleteUserProject } from "@/services/features/users/userSlice";
 import { useToast } from "@/hooks/use-toast";
+import SkillManagementModal from "@/components/SkillManagementModal";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default function Profile() {
   const dispatch = useAppDispatch();
   const { toast } = useToast();
-  const { profile, isLoading } = useAppSelector((s) => s.user);
+  const { profile, userSkills, isLoading, projects } = useAppSelector((s) => s.user);
   const [isEditing, setIsEditing] = useState(false);
+  const [isSkillModalOpen, setIsSkillModalOpen] = useState(false);
+  const [editingSkill, setEditingSkill] = useState<string | null>(null);
+  const [isEditSkillModalOpen, setIsEditSkillModalOpen] = useState(false);
+  const [editSkillData, setEditSkillData] = useState({
+    level: "",
+    experience_years: 0,
+  });
+  const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
+  const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
+  const [projectForm, setProjectForm] = useState({
+    title: "",
+    description: "",
+    category: "",
+    tags: "",
+    project_url: "",
+    github_url: "",
+    image: null as File | null,
+  });
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [editData, setEditData] = useState({
     full_name: "",
     email: "",
@@ -49,6 +83,8 @@ export default function Profile() {
 
   useEffect(() => {
     dispatch(fetchCustomerProfile());
+    dispatch(fetchUserSkills());
+    dispatch(fetchUserProjects());
   }, [dispatch]);
 
   useEffect(() => {
@@ -91,9 +127,15 @@ export default function Profile() {
       },
       achievements: [],
       portfolio: [],
-      skills: [],
+      skills: userSkills.map(skill => ({
+        name: skill.skill_name,
+        category: skill.category as any,
+        level: skill.level as any,
+        experienceYears: skill.experience_years,
+        certifications: [],
+      })),
     };
-  }, [profile]);
+  }, [profile, userSkills]);
 
   const handleAvatarClick = () => {
     if (!fileInputRef) return;
@@ -129,6 +171,78 @@ export default function Profile() {
       dispatch(fetchCustomerProfile());
     } catch (err: any) {
       toast({ title: "Cập nhật thất bại", description: String(err), variant: "destructive" });
+    }
+  };
+
+  const handleDeleteSkill = async (skillId: string) => {
+    try {
+      await dispatch(deleteUserSkill(skillId)).unwrap();
+      toast({ title: "Thành công", description: "Đã xóa kỹ năng thành công" });
+    } catch (error) {
+      toast({ title: "Lỗi", description: "Xóa kỹ năng thất bại", variant: "destructive" });
+    }
+  };
+
+  const handleEditSkill = (skillId: string) => {
+    const skill = userSkills.find(s => s._id === skillId);
+    if (skill) {
+      setEditSkillData({
+        level: skill.level,
+        experience_years: skill.experience_years,
+      });
+      setEditingSkill(skillId);
+      setIsEditSkillModalOpen(true);
+    }
+  };
+
+  const handleUpdateSkill = async () => {
+    if (!editingSkill) return;
+
+    try {
+      await dispatch(updateUserSkill({
+        skillId: editingSkill,
+        data: editSkillData
+      })).unwrap();
+      toast({ title: "Thành công", description: "Đã cập nhật kỹ năng thành công" });
+      setIsEditSkillModalOpen(false);
+      setEditingSkill(null);
+    } catch (error) {
+      toast({ title: "Lỗi", description: "Cập nhật kỹ năng thất bại", variant: "destructive" });
+    }
+  };
+
+  const handleDeleteProject = async (projectId: string) => {
+    try {
+      await dispatch(deleteUserProject(projectId)).unwrap();
+      toast({ title: "Thành công", description: "Đã xóa dự án" });
+    } catch (error) {
+      toast({ title: "Lỗi", description: "Xóa dự án thất bại", variant: "destructive" });
+    }
+  };
+
+  const handleSubmitProject = async () => {
+    try {
+      const formData = new FormData();
+      formData.append("title", projectForm.title);
+      formData.append("description", projectForm.description);
+      formData.append("category", projectForm.category);
+      if (selectedTags.length > 0) formData.append("tags", JSON.stringify(selectedTags));
+      if (projectForm.project_url) formData.append("project_url", projectForm.project_url);
+      if (projectForm.github_url) formData.append("github_url", projectForm.github_url);
+      if (projectForm.image) formData.append("image", projectForm.image);
+
+      if (editingProjectId) {
+        await dispatch(updateUserProject({ projectId: editingProjectId, data: formData })).unwrap();
+        toast({ title: "Thành công", description: "Đã cập nhật dự án" });
+      } else {
+        await dispatch(addUserProject(formData)).unwrap();
+        toast({ title: "Thành công", description: "Đã thêm dự án" });
+      }
+      setIsProjectModalOpen(false);
+      setEditingProjectId(null);
+      setSelectedTags([]);
+    } catch (error) {
+      toast({ title: "Lỗi", description: "Lưu dự án thất bại", variant: "destructive" });
     }
   };
 
@@ -417,7 +531,7 @@ export default function Profile() {
                       Kỹ năng chuyên môn
                     </span>
                     <span className="font-semibold">
-                      {activeUser.skills.length}
+                      {userSkills.length}
                     </span>
                   </div>
                 </CardContent>
@@ -476,22 +590,31 @@ export default function Profile() {
                 <CardTitle className="text-lg">Kỹ năng nổi bật</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {activeUser.skills.slice(0, 4).map((skill) => (
-                    <div key={skill.name} className="space-y-2">
-                      <div className="flex justify-between items-center">
-                        <span className="font-medium">{skill.name}</span>
-                        <span className="text-sm text-muted-foreground">
-                          {getSkillLevelLabel(skill.level)}
-                        </span>
+                {userSkills.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    Chưa có kỹ năng nào. Hãy thêm kỹ năng đầu tiên!
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {userSkills.slice(0, 4).map((skill) => (
+                      <div key={skill._id} className="space-y-2">
+                        <div className="flex justify-between items-center">
+                          <span className="font-medium">{skill.skill_name}</span>
+                          <span className="text-sm text-muted-foreground">
+                            {getSkillLevelLabel(skill.level)}
+                          </span>
+                        </div>
+                        <Progress
+                          value={getSkillLevelProgress(skill.level)}
+                          className="h-2"
+                        />
+                        <div className="text-xs text-muted-foreground">
+                          {skill.experience_years} năm kinh nghiệm
+                        </div>
                       </div>
-                      <Progress
-                        value={getSkillLevelProgress(skill.level)}
-                        className="h-2"
-                      />
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -558,7 +681,12 @@ export default function Profile() {
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <CardTitle>Dự án Portfolio</CardTitle>
-                  <Button size="sm">
+                  <Button size="sm" onClick={() => {
+                    setEditingProjectId(null);
+                    setProjectForm({ title: "", description: "", category: "", tags: "", project_url: "", github_url: "", image: null });
+                    setSelectedTags([]);
+                    setIsProjectModalOpen(true);
+                  }}>
                     <Plus className="h-4 w-4 mr-2" />
                     Thêm dự án
                   </Button>
@@ -566,44 +694,83 @@ export default function Profile() {
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {activeUser.portfolio.map((item) => (
+                  {projects.map((item) => (
                     <Card key={item.id} className="card-hover">
                       <CardHeader>
                         <div className="flex items-center justify-between">
                           <CardTitle className="text-lg">
-                            {item.title}
+                            {(item.title || '').split('"').join('').trim()}
                           </CardTitle>
-                          {item.featured && (
-                            <Badge className="bg-yellow-100 text-yellow-700">
-                              ⭐ Nổi bật
-                            </Badge>
-                          )}
+                          <div className="flex gap-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                setEditingProjectId(item.id);
+                                setProjectForm({
+                                  title: (item.title || '').split('"').join('').trim(),
+                                  description: (item.description || '').split('"').join('').trim(),
+                                  category: (item.category || '').split('"').join('').trim(),
+                                  tags: "",
+                                  project_url: (item.project_url || '').split('"').join('').trim(),
+                                  github_url: (item.github_url || '').split('"').join('').trim(),
+                                  image: null,
+                                });
+                                try {
+                                  const parsed = Array.isArray(item.tags) ? JSON.parse(item.tags[0]?.toString() || "[]") : [];
+                                  if (Array.isArray(parsed)) setSelectedTags(parsed);
+                                } catch { setSelectedTags([]); }
+                                setIsProjectModalOpen(true);
+                              }}
+                              className="h-8 w-8 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                            >
+                              <Pencil className="h-3 w-3" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDeleteProject(item.id)}
+                              className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </div>
                         </div>
                       </CardHeader>
                       <CardContent>
+                        {item.image_url && (
+                          <img
+                            src={item.image_url}
+                            alt={(item.title || '').split('"').join('').trim()}
+                            className="w-full h-40 object-cover rounded-md mb-3"
+                            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                          />
+                        )}
                         <p className="text-sm text-muted-foreground mb-4">
-                          {item.description}
+                          {(item.description || '').split('"').join('').trim()}
                         </p>
-                        <div className="flex flex-wrap gap-1 mb-4">
-                          {item.tags.map((tag) => (
-                            <Badge
-                              key={tag}
-                              variant="outline"
-                              className="text-xs"
-                            >
-                              {tag}
-                            </Badge>
-                          ))}
-                        </div>
+                        {Array.isArray(item.tags) && item.tags.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mb-4">
+                            {(() => {
+                              try {
+                                const parsed = JSON.parse(item.tags[0].toString());
+                                return (parsed as string[]).map((tag) => (
+                                  <Badge key={tag} variant="outline" className="text-xs">
+                                    {tag}
+                                  </Badge>
+                                ));
+                              } catch {
+                                return null;
+                              }
+                            })()}
+                          </div>
+                        )}
                         <div className="flex items-center justify-between">
-                          <span className="text-xs text-muted-foreground">
-                            {formatDate(item.date)}
-                          </span>
-                          <div className="flex gap-2">
-                            {item.githubUrl && (
+                          <div className="flex gap-2 ml-auto">
+                            {item.github_url && (
                               <Button variant="outline" size="sm" asChild>
                                 <a
-                                  href={item.githubUrl}
+                                  href={(item.github_url || '').split('"').join('').trim()}
                                   target="_blank"
                                   rel="noopener noreferrer"
                                 >
@@ -612,10 +779,10 @@ export default function Profile() {
                                 </a>
                               </Button>
                             )}
-                            {item.projectUrl && (
+                            {item.project_url && (
                               <Button variant="outline" size="sm" asChild>
                                 <a
-                                  href={item.projectUrl}
+                                  href={(item.project_url || '').split('"').join('').trim()}
                                   target="_blank"
                                   rel="noopener noreferrer"
                                 >
@@ -639,70 +806,204 @@ export default function Profile() {
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <CardTitle>Kỹ năng chuyên môn</CardTitle>
-                  <Button size="sm">
+                  <Button size="sm" onClick={() => setIsSkillModalOpen(true)}>
                     <Plus className="h-4 w-4 mr-2" />
                     Thêm kỹ năng
                   </Button>
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="space-y-6">
-                  {skillCategories.map((category) => {
-                    const categorySkills = activeUser.skills.filter(
-                      (skill) => skill.category === category.name.toLowerCase(),
-                    );
+                {userSkills.length === 0 ? (
+                  <div className="text-center py-12">
+                    <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
+                      <Plus className="h-8 w-8 text-gray-400" />
+                    </div>
+                    <h3 className="text-lg font-medium text-gray-700 mb-2">Chưa có kỹ năng nào</h3>
+                    <p className="text-gray-500 mb-6">Hãy thêm kỹ năng đầu tiên để bắt đầu xây dựng hồ sơ của bạn!</p>
+                    <Button
+                      onClick={() => setIsSkillModalOpen(true)}
+                      className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Thêm kỹ năng đầu tiên
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    {skillCategories.map((category) => {
+                      const categorySkills = userSkills.filter(
+                        (skill) => skill.category === category.value,
+                      );
 
-                    if (categorySkills.length === 0) return null;
+                      if (categorySkills.length === 0) return null;
 
-                    return (
-                      <div key={category.name}>
-                        <h3 className="font-semibold mb-3 text-lg">
-                          {category.name}
-                        </h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          {categorySkills.map((skill) => (
-                            <div
-                              key={skill.name}
-                              className="p-4 rounded-lg border"
-                            >
-                              <div className="flex justify-between items-center mb-2">
-                                <span className="font-medium">
-                                  {skill.name}
-                                </span>
-                                <Badge variant="outline">
-                                  {getSkillLevelLabel(skill.level)}
-                                </Badge>
+                      return (
+                        <div key={category.value}>
+                          <h3 className="font-semibold mb-3 text-lg">
+                            {category.label}
+                          </h3>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {categorySkills.map((skill) => (
+                              <div
+                                key={skill._id}
+                                className="group p-4 rounded-lg border hover:shadow-md transition-all duration-200"
+                              >
+                                <div className="flex justify-between items-center mb-2">
+                                  <span className="font-medium">
+                                    {skill.skill_name}
+                                  </span>
+                                  <div className="flex items-center space-x-2">
+                                    <Badge
+                                      variant="outline"
+                                      className={
+                                        skill.level === "beginner" ? "bg-green-100 text-green-700 border-green-200" :
+                                          skill.level === "intermediate" ? "bg-blue-100 text-blue-700 border-blue-200" :
+                                            skill.level === "advanced" ? "bg-orange-100 text-orange-700 border-orange-200" :
+                                              skill.level === "expert" ? "bg-red-100 text-red-700 border-red-200" :
+                                                "bg-gray-100 text-gray-700 border-gray-200"
+                                      }
+                                    >
+                                      {getSkillLevelLabel(skill.level)}
+                                    </Badge>
+                                    <div className="flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => handleEditSkill(skill._id)}
+                                        className="h-8 w-8 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                                      >
+                                        <Pencil className="h-3 w-3" />
+                                      </Button>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => handleDeleteSkill(skill._id)}
+                                        className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                      >
+                                        <Trash2 className="h-3 w-3" />
+                                      </Button>
+                                    </div>
+                                  </div>
+                                </div>
+                                <Progress
+                                  value={getSkillLevelProgress(skill.level)}
+                                  className="mb-2"
+                                />
+                                <div className="text-xs text-muted-foreground">
+                                  {skill.experience_years} năm kinh nghiệm
+                                </div>
                               </div>
-                              <Progress
-                                value={getSkillLevelProgress(skill.level)}
-                                className="mb-2"
-                              />
-                              <div className="text-xs text-muted-foreground">
-                                {skill.experienceYears} năm kinh nghiệm
-                                {skill.certifications &&
-                                  skill.certifications.length > 0 && (
-                                    <span>
-                                      {" "}
-                                      • {skill.certifications.length} chứng chỉ
-                                    </span>
-                                  )}
-                              </div>
-                            </div>
-                          ))}
+                            ))}
+                          </div>
+                          {category.value !==
+                            skillCategories[skillCategories.length - 1].value && (
+                              <Separator className="mt-6" />
+                            )}
                         </div>
-                        {category.name !==
-                          skillCategories[skillCategories.length - 1].name && (
-                            <Separator className="mt-6" />
-                          )}
-                      </div>
-                    );
-                  })}
-                </div>
+                      );
+                    })}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Skill Management Modal */}
+      <SkillManagementModal
+        isOpen={isSkillModalOpen}
+        onClose={() => setIsSkillModalOpen(false)}
+      />
+
+      {/* Edit Skill Modal */}
+      <Dialog open={isEditSkillModalOpen} onOpenChange={setIsEditSkillModalOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Cập nhật kỹ năng</DialogTitle>
+            <DialogDescription>
+              Chỉnh sửa mức độ và kinh nghiệm của kỹ năng
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="level">Mức độ</Label>
+              <Select
+                value={editSkillData.level}
+                onValueChange={(value) => setEditSkillData(prev => ({ ...prev, level: value }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Chọn mức độ" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="beginner">Mới bắt đầu</SelectItem>
+                  <SelectItem value="intermediate">Trung cấp</SelectItem>
+                  <SelectItem value="advanced">Nâng cao</SelectItem>
+                  <SelectItem value="expert">Chuyên gia</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="experience_years">Số năm kinh nghiệm</Label>
+              <Input
+                id="experience_years"
+                type="number"
+                min="0"
+                max="50"
+                value={editSkillData.experience_years}
+                onChange={(e) => setEditSkillData(prev => ({
+                  ...prev,
+                  experience_years: parseInt(e.target.value) || 0
+                }))}
+                placeholder="Nhập số năm kinh nghiệm"
+              />
+            </div>
+
+            <div className="flex justify-end space-x-2 pt-4">
+              <Button
+                variant="outline"
+                onClick={() => setIsEditSkillModalOpen(false)}
+              >
+                Hủy
+              </Button>
+              <Button
+                onClick={handleUpdateSkill}
+                disabled={!editSkillData.level || editSkillData.experience_years < 0}
+              >
+                Cập nhật
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add/Edit Project Modal */}
+      <ProjectModal
+        open={isProjectModalOpen}
+        onClose={() => setIsProjectModalOpen(false)}
+        projectId={editingProjectId}
+        initial={{
+          title: projectForm.title,
+          description: projectForm.description,
+          category: projectForm.category,
+          project_url: projectForm.project_url,
+          github_url: projectForm.github_url,
+        }}
+        initialTags={selectedTags}
+        onSubmit={async ({ formData, projectId }) => {
+          if (projectId) {
+            await dispatch(updateUserProject({ projectId, data: formData })).unwrap();
+            toast({ title: "Thành công", description: "Đã cập nhật dự án" });
+          } else {
+            await dispatch(addUserProject(formData)).unwrap();
+            toast({ title: "Thành công", description: "Đã thêm dự án" });
+          }
+          setEditingProjectId(null);
+          setSelectedTags([]);
+        }}
+      />
     </div>
   );
 }
