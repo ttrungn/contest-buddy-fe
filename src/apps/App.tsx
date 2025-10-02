@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import "./App.css";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -15,19 +15,29 @@ import Navbar from "../components/Navbar";
 import Chat from "../components/Chat";
 import Footer from "../components/Footer";
 import AppRouter from "../routers";
+import { useAppSelector } from "@/services/store/store";
+import { isOrganizer } from "@/lib/roleUtils";
 
 const queryClient = new QueryClient();
 
 // Layout wrapper component to conditionally show navbar/footer
 const LayoutWrapper = () => {
   const location = useLocation();
+  const { isAuthenticated, user } = useAppSelector((s) => s.auth);
+  const userIsOrganizer = isAuthenticated && isOrganizer(user);
+  // Always scroll to top on route change (including redirects)
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  }, [location.pathname, location.search]);
   const isAuthPage = location.pathname === '/login' ||
     location.pathname === '/register/organizer' ||
     location.pathname === '/resend-verification' ||
     location.pathname === '/forgot-password' ||
     location.pathname === '/reset-password' ||
     location.pathname.startsWith('/verify-email') ||
-    location.pathname.startsWith('/reset-password/');
+    location.pathname.startsWith('/reset-password/') ||
+    location.pathname === '/unauthorized' ||
+    location.pathname === '/404';
 
   if (isAuthPage) {
     // Full screen layout for auth pages and verification pages
@@ -44,7 +54,7 @@ const LayoutWrapper = () => {
             <AppRouter />
           </div>
         </main>
-        <Chat />
+        {!userIsOrganizer && <Chat />}
       </div>
       <Footer />
     </>

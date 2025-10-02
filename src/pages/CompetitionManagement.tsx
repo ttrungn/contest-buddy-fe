@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   BarChart3,
   DollarSign,
@@ -50,11 +50,18 @@ import {
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { mockCompetitionManagement } from "@/lib/mockData";
+import { useAppDispatch, useAppSelector } from "@/services/store/store";
+import { fetchCompetitions } from "@/services/features/competitions/competitionsSlice";
 import { CompetitionManagement, CompetitionParticipant, Competition, ManagementStatus } from "@/types";
 import { cn } from "@/lib/utils";
 import CreateCompetitionModal from "@/components/CreateCompetitionModal";
 
 export default function CompetitionManagementPage() {
+  const dispatch = useAppDispatch();
+  const { list } = useAppSelector((s) => s.competitions);
+  useEffect(() => {
+    dispatch(fetchCompetitions({ page: 1, limit: 50 }));
+  }, [dispatch]);
   const [competitions, setCompetitions] = useState(mockCompetitionManagement);
   const [selectedCompetition, setSelectedCompetition] = useState(
     mockCompetitionManagement[0],
@@ -996,7 +1003,7 @@ export default function CompetitionManagementPage() {
 
           // Thêm cuộc thi mới vào danh sách
           setCompetitions(prev => [newCompetitionManagement, ...prev]);
-          
+
           // Cập nhật selectedCompetition nếu đây là cuộc thi đầu tiên
           if (competitions.length === 0) {
             setSelectedCompetition(newCompetitionManagement);

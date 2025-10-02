@@ -1,6 +1,8 @@
 import { useMemo, useState } from "react";
+import { Navigate } from "react-router-dom";
 import { mockCompetitions } from "@/lib/mockData";
-import { useUserRole } from "@/contexts/UserRoleContext";
+import { useAppSelector } from "@/services/store/store";
+import { isOrganizer } from "@/lib/roleUtils";
 import { useBalance } from "@/contexts/BalanceContext";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -18,7 +20,7 @@ function getWeeksBetween(start: Date, end: Date) {
 }
 
 export default function OrganizerBilling() {
-  const { isAdmin } = useUserRole();
+  const { user, isAuthenticated } = useAppSelector((s) => s.auth);
   const { balance, deductBalance } = useBalance();
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [isPaid, setIsPaid] = useState(false);
@@ -60,24 +62,6 @@ export default function OrganizerBilling() {
     setPaidAmount(totalAmount);
     setPaidDate(new Date());
   };
-
-  if (!isAdmin) {
-    return (
-      <div className="container py-12">
-        <Card className="max-w-xl mx-auto mt-12">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-red-600">
-              <AlertTriangle className="h-5 w-5" />
-              Chỉ dành cho Ban tổ chức
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p>Bạn không có quyền truy cập trang này.</p>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -162,8 +146,8 @@ export default function OrganizerBilling() {
                   </table>
                 </div>
                 <div className="mt-6 flex justify-end">
-                  <Button 
-                    size="lg" 
+                  <Button
+                    size="lg"
                     className="text-lg"
                     onClick={() => setIsPaymentModalOpen(true)}
                   >
@@ -260,7 +244,7 @@ export default function OrganizerBilling() {
                   </table>
                 </div>
                 <div className="mt-6 flex justify-end">
-                  <Button 
+                  <Button
                     variant="outline"
                     onClick={() => {
                       setIsPaid(false);

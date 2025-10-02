@@ -1,0 +1,355 @@
+import { createAsyncThunk, createSlice, PayloadAction } from "@reduxjs/toolkit";
+import { api } from "@/services/constant/axiosInstance";
+import {
+  COMPETITIONS_ENDPOINT,
+  COMPETITIONS_FEATURED_ENDPOINT,
+  COMPETITIONS_BY_CATEGORY_ENDPOINT,
+  COMPETITIONS_BY_STATUS_ENDPOINT,
+  COMPETITION_DETAIL_ENDPOINT,
+  COMPETITION_PARTICIPANTS_ENDPOINT,
+} from "@/services/constant/apiConfig";
+import {
+  ApiStatusMessage,
+  CompetitionDetail,
+  CompetitionSummary,
+  CreateCompetitionRequest,
+  Pagination,
+  UpdateCompetitionRequest,
+} from "@/interfaces/ICompetition";
+
+interface ListResponse<T> extends ApiStatusMessage<T[]> {
+  pagination?: Pagination;
+}
+
+interface ParticipantsItem {
+  user_id: string;
+  status: string;
+  user: {
+    id: string;
+    email: string;
+    full_name: string;
+  };
+}
+
+interface CompetitionsState {
+  list: CompetitionSummary[];
+  featured: CompetitionSummary[];
+  detail: CompetitionDetail | null;
+  participants: ParticipantsItem[];
+  pagination: Pagination | null;
+  isLoading: boolean;
+  error: string | null;
+}
+
+const initialState: CompetitionsState = {
+  list: [],
+  featured: [],
+  detail: null,
+  participants: [],
+  pagination: null,
+  isLoading: false,
+  error: null,
+};
+
+// Create
+export const createCompetition = createAsyncThunk<
+  ApiStatusMessage<{ id: string; title: string; organizer_id: string }>,
+  CreateCompetitionRequest,
+  { rejectValue: string }
+>("competitions/create", async (payload, { rejectWithValue }) => {
+  try {
+    const res = await api.post<
+      ApiStatusMessage<{ id: string; title: string; organizer_id: string }>
+    >(COMPETITIONS_ENDPOINT, payload);
+    return res;
+  } catch (err: any) {
+    return rejectWithValue(
+      err?.response?.data?.message ||
+        err?.message ||
+        "Failed to create competition",
+    );
+  }
+});
+
+// Get lists
+export const fetchCompetitions = createAsyncThunk<
+  { data: CompetitionSummary[]; pagination?: Pagination },
+  {
+    page?: number;
+    limit?: number;
+    category?: string;
+    status?: string;
+    featured?: boolean;
+  },
+  { rejectValue: string }
+>("competitions/fetch", async (params = {}, { rejectWithValue }) => {
+  try {
+    const query = new URLSearchParams();
+    if (params.page) query.set("page", String(params.page));
+    if (params.limit) query.set("limit", String(params.limit));
+    if (params.category) query.set("category", params.category);
+    if (params.status) query.set("status", params.status);
+    if (params.featured) query.set("featured", "true");
+    const url = `${COMPETITIONS_ENDPOINT}${query.toString() ? `?${query.toString()}` : ""}`;
+    const res = await api.get<ListResponse<CompetitionSummary>>(url);
+    return { data: res.data || [], pagination: res.pagination };
+  } catch (err: any) {
+    return rejectWithValue(
+      err?.response?.data?.message ||
+        err?.message ||
+        "Failed to get competitions",
+    );
+  }
+});
+
+export const fetchFeaturedCompetitions = createAsyncThunk<
+  { data: CompetitionSummary[]; pagination?: Pagination },
+  { page?: number; limit?: number },
+  { rejectValue: string }
+>("competitions/fetchFeatured", async (params = {}, { rejectWithValue }) => {
+  try {
+    const query = new URLSearchParams();
+    if (params.page) query.set("page", String(params.page));
+    if (params.limit) query.set("limit", String(params.limit));
+    const url = `${COMPETITIONS_FEATURED_ENDPOINT}${query.toString() ? `?${query.toString()}` : ""}`;
+    const res = await api.get<ListResponse<CompetitionSummary>>(url);
+    return { data: res.data || [], pagination: res.pagination };
+  } catch (err: any) {
+    return rejectWithValue(
+      err?.response?.data?.message ||
+        err?.message ||
+        "Failed to get featured competitions",
+    );
+  }
+});
+
+export const fetchCompetitionsByCategory = createAsyncThunk<
+  { data: CompetitionSummary[]; pagination?: Pagination },
+  { category: string; page?: number; limit?: number },
+  { rejectValue: string }
+>(
+  "competitions/fetchByCategory",
+  async ({ category, page, limit }, { rejectWithValue }) => {
+    try {
+      const query = new URLSearchParams();
+      if (page) query.set("page", String(page));
+      if (limit) query.set("limit", String(limit));
+      const url = `${COMPETITIONS_BY_CATEGORY_ENDPOINT(category)}${query.toString() ? `?${query.toString()}` : ""}`;
+      const res = await api.get<ListResponse<CompetitionSummary>>(url);
+      return { data: res.data || [], pagination: res.pagination };
+    } catch (err: any) {
+      return rejectWithValue(
+        err?.response?.data?.message ||
+          err?.message ||
+          "Failed to get competitions by category",
+      );
+    }
+  },
+);
+
+export const fetchCompetitionsByStatus = createAsyncThunk<
+  { data: CompetitionSummary[]; pagination?: Pagination },
+  { status: string; page?: number; limit?: number },
+  { rejectValue: string }
+>(
+  "competitions/fetchByStatus",
+  async ({ status, page, limit }, { rejectWithValue }) => {
+    try {
+      const query = new URLSearchParams();
+      if (page) query.set("page", String(page));
+      if (limit) query.set("limit", String(limit));
+      const url = `${COMPETITIONS_BY_STATUS_ENDPOINT(status)}${query.toString() ? `?${query.toString()}` : ""}`;
+      const res = await api.get<ListResponse<CompetitionSummary>>(url);
+      return { data: res.data || [], pagination: res.pagination };
+    } catch (err: any) {
+      return rejectWithValue(
+        err?.response?.data?.message ||
+          err?.message ||
+          "Failed to get competitions by status",
+      );
+    }
+  },
+);
+
+// Detail and participants
+export const fetchCompetitionDetail = createAsyncThunk<
+  CompetitionDetail,
+  string,
+  { rejectValue: string }
+>("competitions/fetchDetail", async (id, { rejectWithValue }) => {
+  try {
+    const res = await api.get<ApiStatusMessage<any>>(
+      COMPETITION_DETAIL_ENDPOINT(id),
+    );
+    if (res.status !== "success" || !res.data)
+      throw new Error(res.message || "Failed to get competition");
+    const d: any = res.data;
+    // Normalize snake_case -> camelCase for UI
+    const normalized: CompetitionDetail = {
+      id: d.id,
+      title: d.title,
+      organizer_id: d.organizer_id,
+      category: d.category,
+      status: d.status,
+      featured: d.featured,
+      description: d.description,
+      startDate: d.start_date,
+      endDate: d.end_date,
+      registrationDeadline: d.registration_deadline,
+      location: d.location,
+      prizePool: d.prize_pool_text,
+      participants: d.participants_count,
+      maxParticipants: d.max_participants,
+      level: d.level,
+      imageUrl: d.image_url,
+      website: d.website,
+      rules: d.rules,
+      tags: d.competitionTags || [],
+      requiredSkills: d.competitionRequiredSkills || [],
+      organizer: {
+        email: d.organizer?.email,
+        website: d.organizer?.website,
+      },
+    };
+    return normalized;
+  } catch (err: any) {
+    return rejectWithValue(
+      err?.response?.data?.message ||
+        err?.message ||
+        "Failed to get competition",
+    );
+  }
+});
+
+export const fetchCompetitionParticipants = createAsyncThunk<
+  { data: ParticipantsItem[]; pagination?: Pagination },
+  { id: string; page?: number; limit?: number },
+  { rejectValue: string }
+>(
+  "competitions/fetchParticipants",
+  async ({ id, page, limit }, { rejectWithValue }) => {
+    try {
+      const query = new URLSearchParams();
+      if (page) query.set("page", String(page));
+      if (limit) query.set("limit", String(limit));
+      const url = `${COMPETITION_PARTICIPANTS_ENDPOINT(id)}${query.toString() ? `?${query.toString()}` : ""}`;
+      const res = await api.get<ListResponse<ParticipantsItem>>(url);
+      return { data: res.data || [], pagination: res.pagination };
+    } catch (err: any) {
+      return rejectWithValue(
+        err?.response?.data?.message ||
+          err?.message ||
+          "Failed to get competition participants",
+      );
+    }
+  },
+);
+
+// Update
+export const updateCompetition = createAsyncThunk<
+  ApiStatusMessage<{ id: string; title: string }>,
+  { id: string; data: UpdateCompetitionRequest },
+  { rejectValue: string }
+>("competitions/update", async ({ id, data }, { rejectWithValue }) => {
+  try {
+    const res = await api.put<ApiStatusMessage<{ id: string; title: string }>>(
+      COMPETITION_DETAIL_ENDPOINT(id),
+      data,
+    );
+    return res;
+  } catch (err: any) {
+    return rejectWithValue(
+      err?.response?.data?.message ||
+        err?.message ||
+        "Failed to update competition",
+    );
+  }
+});
+
+// Delete
+export const deleteCompetition = createAsyncThunk<
+  ApiStatusMessage<unknown>,
+  string,
+  { rejectValue: string }
+>("competitions/delete", async (id, { rejectWithValue }) => {
+  try {
+    const res = await api.delete<ApiStatusMessage<unknown>>(
+      COMPETITION_DETAIL_ENDPOINT(id),
+    );
+    return res;
+  } catch (err: any) {
+    return rejectWithValue(
+      err?.response?.data?.message ||
+        err?.message ||
+        "Failed to delete competition",
+    );
+  }
+});
+
+const competitionsSlice = createSlice({
+  name: "competitions",
+  initialState,
+  reducers: {
+    clearCompetitionsError(state) {
+      state.error = null;
+    },
+  },
+  extraReducers: (builder) => {
+    builder
+      .addCase(fetchCompetitions.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(fetchCompetitions.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.list = action.payload.data;
+        state.pagination = action.payload.pagination || null;
+      })
+      .addCase(fetchCompetitions.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload || "Failed to get competitions";
+      })
+      .addCase(fetchFeaturedCompetitions.fulfilled, (state, action) => {
+        state.featured = action.payload.data;
+      })
+      .addCase(fetchCompetitionsByCategory.fulfilled, (state, action) => {
+        state.list = action.payload.data;
+        state.pagination = action.payload.pagination || null;
+      })
+      .addCase(fetchCompetitionsByStatus.fulfilled, (state, action) => {
+        state.list = action.payload.data;
+        state.pagination = action.payload.pagination || null;
+      })
+      .addCase(fetchCompetitionDetail.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+        state.detail = null;
+      })
+      .addCase(
+        fetchCompetitionDetail.fulfilled,
+        (state, action: PayloadAction<CompetitionDetail>) => {
+          state.isLoading = false;
+          state.detail = action.payload;
+        },
+      )
+      .addCase(fetchCompetitionDetail.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload || "Failed to get competition";
+      })
+      .addCase(fetchCompetitionParticipants.fulfilled, (state, action) => {
+        state.participants = action.payload.data;
+      })
+      .addCase(createCompetition.rejected, (state, action) => {
+        state.error = action.payload || "Failed to create competition";
+      })
+      .addCase(updateCompetition.rejected, (state, action) => {
+        state.error = action.payload || "Failed to update competition";
+      })
+      .addCase(deleteCompetition.rejected, (state, action) => {
+        state.error = action.payload || "Failed to delete competition";
+      });
+  },
+});
+
+export const { clearCompetitionsError } = competitionsSlice.actions;
+export default competitionsSlice.reducer;

@@ -4,6 +4,8 @@ import { persistReducer, persistStore } from "redux-persist";
 import storage from "redux-persist/lib/storage";
 import authReducer from "../features/auth/authSlice";
 import userReducer from "../features/users/userSlice";
+import organizerReducer from "../features/organizer/organizerSlice";
+import competitionsReducer from "../features/competitions/competitionsSlice";
 
 const presistConfig = {
   key: "root",
@@ -15,6 +17,8 @@ const presistConfig = {
 const rootReducer = combineReducers({
   auth: authReducer,
   user: userReducer,
+  organizer: organizerReducer,
+  competitions: competitionsReducer,
 });
 
 const persistedReducer = persistReducer(presistConfig, rootReducer);

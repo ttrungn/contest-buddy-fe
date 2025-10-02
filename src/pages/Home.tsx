@@ -1,5 +1,5 @@
 import CompetitionCard from "@/components/CompetitionCard";
-import { mockCompetitions, mockUsers, competitionCategories } from "@/lib/mockData";
+import { mockUsers, competitionCategories } from "@/lib/mockData";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,7 +9,9 @@ import { cn } from "@/lib/utils";
 import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Search, ArrowRight, Trophy, Users, Building2 } from "lucide-react";
-import { useAppSelector } from "@/services/store/store";
+import { useAppDispatch, useAppSelector } from "@/services/store/store";
+import { fetchFeaturedCompetitions } from "@/services/features/competitions/competitionsSlice";
+import { useEffect } from "react";
 
 function UserCard({ user }) {
   const navigate = useNavigate();
@@ -78,8 +80,31 @@ function UserCard({ user }) {
 
 export default function Home() {
   const navigate = useNavigate();
+  const dispatch = useAppDispatch();
   const { isAuthenticated } = useAppSelector((state) => state.auth);
-  const competitions = mockCompetitions.slice(0, 5);
+  const { featured } = useAppSelector((s) => s.competitions);
+  useEffect(() => {
+    dispatch(fetchFeaturedCompetitions({ page: 1, limit: 6 }));
+  }, [dispatch]);
+  const competitions = featured.slice(0, 6).map((c) => ({
+    id: c.id,
+    title: c.title,
+    description: "",
+    category: (c.category as any) || "programming",
+    organizer: "",
+    startDate: new Date(),
+    endDate: new Date(),
+    registrationDeadline: new Date(),
+    location: "",
+    isOnline: false,
+    participants: 0,
+    tags: [],
+    requiredSkills: [],
+    level: "beginner" as any,
+    featured: c.featured || false,
+    status: "upcoming" as any,
+    imageUrl: (c as any).image_url || (c as any).imageUrl,
+  }));
   const users = mockUsers.slice(0, 5);
 
   return (
@@ -145,7 +170,7 @@ export default function Home() {
               <CompetitionCard key={competition.id} competition={competition} />
             ))}
           </div>
-          <Button onClick={() => navigate("/")}>Xem thêm cuộc thi</Button>
+          <Button onClick={() => navigate("/competitions")}>Xem thêm cuộc thi</Button>
         </section>
 
         {/* Friend Suggestion Section */}
