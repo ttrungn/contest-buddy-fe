@@ -258,6 +258,27 @@ export const api = {
     }
   },
 
+  // File upload with FormData using PUT
+  uploadPut: async <T = any>(
+    url: string,
+    formData: FormData,
+    config?: any,
+  ): Promise<T> => {
+    try {
+      const response = await axiosInstance.put<T>(url, formData, {
+        ...config,
+        headers: {
+          "Content-Type": "multipart/form-data",
+          ...config?.headers,
+        },
+      });
+      return response.data;
+    } catch (error) {
+      console.error(`UPLOAD_PUT ${url} failed:`, error);
+      throw error;
+    }
+  },
+
   // Verify token
   verifyToken: async (token: string): Promise<VerifyTokenResponse> => {
     try {
