@@ -48,15 +48,15 @@ export default function Navbar() {
 
   const participantNavigation = [
     { name: "Trang chủ", href: "/home", icon: Rocket },
-    { name: "Cuộc thi", href: "/", icon: Trophy },
+    { name: "Cuộc thi", href: "/competitions", icon: Trophy },
     { name: "Cộng đồng", href: "/community", icon: Users },
     { name: "About", href: "/about", icon: Info },
   ];
 
   const organizerNavigation = [
-    { name: "Quản lý cuộc thi", href: "/admin/competitions", icon: Trophy },
-    { name: "Báo cáo", href: "/admin/reports", icon: BarChart3 },
-    { name: "Thanh toán", href: "/admin/billing", icon: Briefcase },
+    { name: "Quản lý cuộc thi", href: "/organizer/competitions", icon: Trophy },
+    { name: "Báo cáo", href: "/organizer/reports", icon: BarChart3 },
+    { name: "Thanh toán", href: "/organizer/billing", icon: Briefcase },
   ];
 
   // Determine navigation based on user role from auth state

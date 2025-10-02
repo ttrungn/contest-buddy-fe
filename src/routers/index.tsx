@@ -1,5 +1,5 @@
 
-import { Route, Routes } from "react-router-dom";
+import { Route, Routes, Navigate } from "react-router-dom";
 import Index from "../pages/Index";
 import Profile from "../pages/Profile";
 import Calendar from "../pages/Calendar";
@@ -25,14 +25,38 @@ import EmailVerification from "../pages/EmailVerification";
 import ResendVerification from "../pages/ResendVerification";
 import ForgotPassword from "../pages/ForgotPassword";
 import ResetPassword from "../pages/ResetPassword";
+import Unauthorized from "../pages/Unauthorized";
 
 const AppRouter = () => {
     return (
         <Routes>
-            {/* Public routes */}
-            <Route path="/" element={<Index />} />
-            <Route path="/home" element={<Home />} />
-            <Route path="/competition/:id" element={<Competition />} />
+            {/* Root redirects to home */}
+            <Route path="/" element={<Navigate to="/home" replace />} />
+            <Route
+                path="/home"
+                element={
+                    <ProtectedRoute blockedRoles={["organizer"]}>
+                        <Home />
+                    </ProtectedRoute>
+                }
+            />
+            {/* Competitions listing page */}
+            <Route
+                path="/competitions"
+                element={
+                    <ProtectedRoute blockedRoles={["organizer"]}>
+                        <Index />
+                    </ProtectedRoute>
+                }
+            />
+            <Route
+                path="/competition/:id"
+                element={
+                    <ProtectedRoute blockedRoles={["organizer"]}>
+                        <Competition />
+                    </ProtectedRoute>
+                }
+            />
             <Route path="/community" element={<Community />} />
             <Route path="/about" element={<About />} />
             <Route path="/user/:id" element={<UserDetails />} />
@@ -107,6 +131,9 @@ const AppRouter = () => {
                 }
             />
 
+            {/* Unauthorized - public route to render full-screen message without navbar/footer */}
+            <Route path="/unauthorized" element={<Unauthorized />} />
+
             {/* Protected routes - require authentication */}
             <Route
                 path="/profile"
@@ -149,11 +176,11 @@ const AppRouter = () => {
                 }
             />
 
-            {/* Admin only routes */}
+            {/* Organizer-only management routes */}
             <Route
-                path="/admin/competitions"
+                path="/organizer/competitions"
                 element={
-                    <ProtectedRoute requireAuth allowedRoles={["admin"]}>
+                    <ProtectedRoute requireAuth allowedRoles={["organizer"]}>
                         <CompetitionManagement />
                     </ProtectedRoute>
                 }
@@ -167,9 +194,9 @@ const AppRouter = () => {
                 }
             />
             <Route
-                path="/admin/reports"
+                path="/organizer/reports"
                 element={
-                    <ProtectedRoute requireAuth allowedRoles={["admin"]}>
+                    <ProtectedRoute requireAuth allowedRoles={["organizer"]}>
                         <Reports />
                     </ProtectedRoute>
                 }
@@ -185,9 +212,9 @@ const AppRouter = () => {
 
             {/* Organizer routes */}
             <Route
-                path="/admin/billing"
+                path="/organizer/billing"
                 element={
-                    <ProtectedRoute requireAuth allowedRoles={["organizer", "admin"]}>
+                    <ProtectedRoute requireAuth allowedRoles={["organizer"]}>
                         <OrganizerBilling />
                     </ProtectedRoute>
                 }
@@ -200,6 +227,11 @@ const AppRouter = () => {
                     </ProtectedRoute>
                 }
             />
+
+            {/* Backward-compatible redirects from old admin paths */}
+            <Route path="/admin/competitions" element={<Navigate to="/organizer/competitions" replace />} />
+            <Route path="/admin/reports" element={<Navigate to="/organizer/reports" replace />} />
+            <Route path="/admin/billing" element={<Navigate to="/organizer/billing" replace />} />
 
             {/* Settings - protected */}
             <Route
@@ -218,8 +250,9 @@ const AppRouter = () => {
                 }
             />
 
-            {/* 404 route */}
-            <Route path="*" element={<NotFound />} />
+            {/* 404 route - redirect wildcard to dedicated /404 */}
+            <Route path="/404" element={<NotFound />} />
+            <Route path="*" element={<Navigate to="/404" replace />} />
         </Routes>
     );
 }

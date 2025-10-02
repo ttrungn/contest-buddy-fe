@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Link } from "react-router-dom";
 import {
   TrendingUp,
@@ -17,17 +17,48 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import CompetitionCard from "@/components/CompetitionCard";
 import SearchFilters from "@/components/SearchFilters";
-import { mockCompetitions, competitionCategories } from "@/lib/mockData";
+import { competitionCategories } from "@/lib/mockData";
 import { SearchFilters as SearchFiltersType, Competition } from "@/types";
-import { useUserRole } from "@/contexts/UserRoleContext";
+import { useAppDispatch, useAppSelector } from "@/services/store/store";
+import { fetchCompetitions, fetchFeaturedCompetitions } from "@/services/features/competitions/competitionsSlice";
 
 export default function Index() {
   const [filters, setFilters] = useState<SearchFiltersType>({});
   const [searchQuery, setSearchQuery] = useState("");
-  const { isAdmin } = useUserRole();
+  const dispatch = useAppDispatch();
+  const { list, featured } = useAppSelector((s) => s.competitions);
+  const { isAuthenticated } = useAppSelector((s) => s.auth);
+
+  useEffect(() => {
+    dispatch(fetchCompetitions({ page: 1, limit: 30 }));
+    dispatch(fetchFeaturedCompetitions({ page: 1, limit: 12 }));
+  }, [dispatch]);
+
+  // Map API items (summary) to UI Competition card shape with safe defaults
+  const mapToCard = (c: any) => ({
+    id: c.id,
+    title: c.title,
+    description: c.description || "",
+    category: (c.category as any) || "programming",
+    organizer: "",
+    startDate: new Date(),
+    endDate: new Date(),
+    registrationDeadline: new Date(),
+    location: "",
+    isOnline: false,
+    participants: 0,
+    tags: [],
+    requiredSkills: [],
+    level: "beginner" as any,
+    featured: !!c.featured,
+    status: (c.status as any) || "upcoming",
+    imageUrl: c.image_url || c.imageUrl,
+  });
+  const cardList = (list || []).map(mapToCard);
+  const cardFeatured = (featured || []).map(mapToCard);
 
   const filteredCompetitions = useMemo(() => {
-    let filtered = mockCompetitions;
+    let filtered = cardList as any[];
 
     // Search by query
     if (searchQuery) {
@@ -74,20 +105,16 @@ export default function Index() {
     }
 
     return filtered;
-  }, [filters, searchQuery, mockCompetitions]);
+  }, [filters, searchQuery, cardList]);
 
-  const featuredCompetitions = mockCompetitions.filter((comp) => comp.featured);
-  const upcomingCompetitions = mockCompetitions.filter(
-    (comp) => comp.status === "registration-open",
-  );
-  const ongoingCompetitions = mockCompetitions.filter(
-    (comp) => comp.status === "ongoing",
-  );
+  const featuredCompetitions = cardFeatured as any[];
+  const upcomingCompetitions = cardList.filter((comp: any) => comp.status === "registration_open") as any[];
+  const ongoingCompetitions = cardList.filter((comp: any) => comp.status === "in_progress") as any[];
 
   const stats = [
     {
       title: "Cuộc thi đang diễn ra",
-      value: mockCompetitions.filter((c) => c.status === "ongoing").length,
+      value: ongoingCompetitions.length,
       icon: TrendingUp,
       color: "text-green-600",
     },
@@ -99,8 +126,7 @@ export default function Index() {
     },
     {
       title: "Cuộc thi tuần này",
-      value: mockCompetitions.filter((c) => c.status === "registration-open")
-        .length,
+      value: upcomingCompetitions.length,
       icon: Calendar,
       color: "text-purple-600",
     },
@@ -112,6 +138,7 @@ export default function Index() {
     },
   ];
 
+  const isAdmin = false;
   return (
     <div className="min-h-screen bg-background">
       <div className="container pt-12">

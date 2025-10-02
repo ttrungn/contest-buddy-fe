@@ -1,18 +1,5 @@
 import { useParams } from "react-router-dom";
-import {
-  Calendar,
-  MapPin,
-  Users,
-  Trophy,
-  Clock,
-  ExternalLink,
-  Share,
-  Heart,
-  Bookmark,
-  AlertTriangle,
-  CheckCircle,
-  Star,
-} from "lucide-react";
+import { Calendar, MapPin, Users, Trophy, ExternalLink, AlertTriangle, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,21 +7,25 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Progress } from "@/components/ui/progress";
-import { mockCompetitions, mockUsers, mockTeams } from "@/lib/mockData";
+import { mockUsers, mockTeams } from "@/lib/mockData";
 import { cn } from "@/lib/utils";
-import { useMemo, useState } from "react";
-import { useUserRole } from "@/contexts/UserRoleContext";
+import { useMemo, useState, useEffect } from "react";
+import { useAppDispatch, useAppSelector } from "@/services/store/store";
+import { fetchCompetitionDetail } from "@/services/features/competitions/competitionsSlice";
 import RegistrationModal from "@/components/RegistrationModal";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
-import { MessageSquare, UserPlus, Flag } from "lucide-react";
+import { Flag } from "lucide-react";
 import { useChat } from "@/contexts/ChatContext";
-import CompetitionThumbnail from "@/components/CompetitionThumbnail";
 
 export default function Competition() {
   const { id } = useParams();
-  const competition = mockCompetitions.find((comp) => comp.id === id);
-  const { isAdmin } = useUserRole();
+  const dispatch = useAppDispatch();
+  const { detail: competition, isLoading } = useAppSelector((s) => s.competitions);
+  useEffect(() => {
+    if (id) dispatch(fetchCompetitionDetail(id));
+  }, [dispatch, id]);
+  const isAdmin = false;
   const [isRegistrationModalOpen, setIsRegistrationModalOpen] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -71,7 +62,10 @@ export default function Competition() {
     openChatWithUser(user.id, user.fullName);
   };
 
-  if (!competition) {
+  // Read normalized camelCase data directly from store
+  const norm = competition;
+
+  if (!competition && !isLoading) {
     return (
       <div className="min-h-screen bg-background">
         <div className="container py-16 text-center">
@@ -85,8 +79,10 @@ export default function Competition() {
   }
 
   const getStatusBadge = () => {
-    switch (competition.status) {
-      case "registration-open":
+    if (!norm) return null;
+    switch (norm.status as any) {
+      case "registration_open":
+      case "published":
         return (
           <Badge className="bg-green-100 text-green-700 border-green-200">
             Đang mở đăng ký
@@ -94,6 +90,7 @@ export default function Competition() {
         );
       case "upcoming":
         return <Badge variant="secondary">Sắp diễn ra</Badge>;
+      case "in_progress":
       case "ongoing":
         return (
           <Badge className="bg-blue-100 text-blue-700 border-blue-200">
@@ -102,6 +99,10 @@ export default function Competition() {
         );
       case "completed":
         return <Badge variant="outline">Đã kết thúc</Badge>;
+      case "registration_closed":
+        return <Badge variant="outline">Đã đóng đăng ký</Badge>;
+      case "cancelled":
+        return <Badge variant="destructive">Đã hủy</Badge>;
       default:
         return null;
     }
@@ -118,10 +119,14 @@ export default function Competition() {
       startup: "🚀",
       creative: "✨",
     };
-    return iconMap[competition.category] || "🏆";
+    const key = (norm?.category as string) || "";
+    return iconMap[key] || "🏆";
   };
 
-  const formatDate = (date: Date) => {
+  const formatDate = (date: Date | string | undefined | null) => {
+    if (!date) return "--";
+    const d = new Date(date);
+    if (isNaN(d.getTime())) return "--";
     return new Intl.DateTimeFormat("vi-VN", {
       weekday: "long",
       day: "2-digit",
@@ -129,71 +134,45 @@ export default function Competition() {
       year: "numeric",
       hour: "2-digit",
       minute: "2-digit",
-    }).format(new Date(date));
+    }).format(d);
   };
 
-  const formatDateShort = (date: Date) => {
+  const formatDateShort = (date: Date | string | undefined | null) => {
+    if (!date) return "--/--";
+    const d = new Date(date);
+    if (isNaN(d.getTime())) return "--/--";
     return new Intl.DateTimeFormat("vi-VN", {
       day: "2-digit",
       month: "2-digit",
       year: "numeric",
-    }).format(new Date(date));
+    }).format(d);
   };
 
   const getDaysUntilDeadline = () => {
     const today = new Date();
-    const deadline = new Date(competition.registrationDeadline);
-    
+    const deadline = new Date((norm as any)?.registrationDeadline);
+
     // Reset time to start of day for accurate comparison
     const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
     const deadlineStart = new Date(deadline.getFullYear(), deadline.getMonth(), deadline.getDate());
-    
+
     const diffTime = deadlineStart.getTime() - todayStart.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
+
     return diffDays;
   };
 
   const getRegistrationProgress = () => {
-    if (!competition.maxParticipants) return 0;
-    return (competition.participants / competition.maxParticipants) * 100;
+    const participants = (norm as any)?.participants || 0;
+    const max = (norm as any)?.maxParticipants || 0;
+    if (!max) return 0;
+    return (participants / max) * 100;
   };
 
   const daysLeft = getDaysUntilDeadline();
   const registrationProgress = getRegistrationProgress();
 
-  // Mock similar competitions
-  const similarCompetitions = mockCompetitions
-    .filter(
-      (comp) =>
-        comp.id !== competition.id && comp.category === competition.category,
-    )
-    .slice(0, 3);
-
-  // Mock participants
-  const participants = mockUsers.slice(0, 8);
-
-  // Đề xuất bạn thi: cùng lĩnh vực hoặc random
-  const recommendFriends = useMemo(() => {
-    // Lấy các user có kỹ năng hoặc lĩnh vực trùng với requiredSkills của cuộc thi
-    const requiredSkillNames = competition.requiredSkills.map((s) => s.name.toLowerCase());
-    const bySkill = mockUsers.filter((u) =>
-      u.skills.some((s) => requiredSkillNames.includes(s.name.toLowerCase()))
-    );
-    // Nếu không đủ, lấy random
-    if (bySkill.length >= 4) return bySkill.slice(0, 4);
-    const others = mockUsers.filter((u) => !bySkill.includes(u));
-    return [...bySkill, ...others.slice(0, 4 - bySkill.length)];
-  }, [competition]);
-
-  // Đề xuất thí sinh nổi bật cho ban tổ chức
-  const recommendedUsers = useMemo(
-    () =>
-      mockUsers
-        .filter((u) => u.rating >= 4.7 || u.isVerified)
-        .slice(0, 4),
-    []
-  );
+  // Remove unused mocks not supported by current response
 
   return (
     <div className="min-h-screen bg-background">
@@ -208,10 +187,10 @@ export default function Competition() {
                   <div className="text-4xl">{getCategoryIcon()}</div>
                   <div>
                     <Badge variant="secondary" className="mb-2">
-                      {competition.category}
+                      {norm?.category}
                     </Badge>
                     <h1 className="text-3xl lg:text-4xl font-bold leading-tight">
-                      {competition.title}
+                      {norm?.title}
                     </h1>
                   </div>
                 </div>
@@ -224,9 +203,7 @@ export default function Competition() {
                 {getStatusBadge()}
               </div>
 
-              <p className="text-lg text-muted-foreground leading-relaxed">
-                {competition.description}
-              </p>
+              <p className="text-lg text-muted-foreground leading-relaxed">{norm?.description}</p>
 
               {/* Key Details */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -236,9 +213,7 @@ export default function Competition() {
                   </div>
                   <div>
                     <div className="font-medium">Hạn đăng ký</div>
-                    <div className="text-sm text-muted-foreground">
-                      {formatDateShort(competition.registrationDeadline)}
-                    </div>
+                    <div className="text-sm text-muted-foreground">{formatDateShort(norm?.registrationDeadline as any)}</div>
                   </div>
                 </div>
 
@@ -248,10 +223,7 @@ export default function Competition() {
                   </div>
                   <div>
                     <div className="font-medium">Địa điểm</div>
-                    <div className="text-sm text-muted-foreground">
-                      {competition.location}{" "}
-                      {competition.isOnline && "(Online)"}
-                    </div>
+                    <div className="text-sm text-muted-foreground">{norm?.location}</div>
                   </div>
                 </div>
 
@@ -262,23 +234,20 @@ export default function Competition() {
                   <div>
                     <div className="font-medium">Người tham gia</div>
                     <div className="text-sm text-muted-foreground">
-                      {competition.participants} người
-                      {competition.maxParticipants &&
-                        ` / ${competition.maxParticipants}`}
+                      {norm?.participants} người
+                      {norm?.maxParticipants && ` / ${norm?.maxParticipants}`}
                     </div>
                   </div>
                 </div>
 
-                {competition.prizePool && (
+                {norm?.prizePool && (
                   <div className="flex items-center gap-3 p-4 bg-white rounded-lg border">
                     <div className="p-2 bg-yellow-100 rounded-lg">
                       <Trophy className="h-5 w-5 text-yellow-600" />
                     </div>
                     <div>
                       <div className="font-medium">Giải thưởng</div>
-                      <div className="text-sm text-muted-foreground">
-                        {competition.prizePool}
-                      </div>
+                      <div className="text-sm text-muted-foreground">{norm?.prizePool}</div>
                     </div>
                   </div>
                 )}
@@ -286,7 +255,7 @@ export default function Competition() {
 
               {/* Tags */}
               <div className="flex flex-wrap gap-2">
-                {competition.tags.map((tag) => (
+                {(norm?.tags || []).map((tag: string) => (
                   <Badge key={tag} variant="outline">
                     {tag}
                   </Badge>
@@ -299,22 +268,16 @@ export default function Competition() {
               <Card className="sticky top-4">
                 <CardContent className="pt-6">
                   {/* Competition Thumbnail */}
-                  <div className="mb-6">
-                    {competition.imageUrl ? (
+                  {norm?.imageUrl && (
+                    <div className="mb-6">
                       <img
-                        src={competition.imageUrl}
-                        alt={competition.title}
+                        src={norm.imageUrl}
+                        alt={norm.title}
                         className="w-full h-48 object-cover rounded-t-lg"
                         onError={e => { (e.target as HTMLImageElement).src = "/thi.png"; }}
                       />
-                    ) : (
-                      <img
-                        src="/thi.png"
-                        alt="Default Competition Thumbnail"
-                        className="w-full h-48 object-cover rounded-t-lg"
-                      />
-                    )}
-                  </div>
+                    </div>
+                  )}
 
                   {/* Countdown */}
                   {daysLeft > 0 && (
@@ -338,14 +301,11 @@ export default function Competition() {
                   )}
 
                   {/* Registration Progress */}
-                  {competition.maxParticipants && (
+                  {norm?.maxParticipants && (
                     <div className="mb-6">
                       <div className="flex justify-between text-sm mb-2">
                         <span>Đã đăng ký</span>
-                        <span>
-                          {competition.participants}/
-                          {competition.maxParticipants}
-                        </span>
+                        <span>{norm?.participants}/{norm?.maxParticipants}</span>
                       </div>
                       <Progress
                         value={registrationProgress}
@@ -357,8 +317,8 @@ export default function Competition() {
                   {/* Action Buttons */}
                   <div className="space-y-3">
                     {isUserRegistered ? (
-                      <Button 
-                        className="w-full" 
+                      <Button
+                        className="w-full"
                         variant="secondary"
                         size="lg"
                         disabled
@@ -366,10 +326,10 @@ export default function Competition() {
                         <CheckCircle className="h-4 w-4 mr-2" />
                         Đã đăng ký
                       </Button>
-                    ) : competition.status === "registration-open" && daysLeft > 0 ? (
+                    ) : (norm?.status === "registration_open" || norm?.status === "published") && daysLeft > 0 ? (
                       hasTeam ? (
-                        <Button 
-                          className="w-full" 
+                        <Button
+                          className="w-full"
                           size="lg"
                           onClick={() => setIsRegistrationModalOpen(true)}
                         >
@@ -394,11 +354,11 @@ export default function Competition() {
                         size="lg"
                         disabled
                       >
-                        {competition.status === "completed"
+                        {norm?.status === "completed"
                           ? "Đã kết thúc"
                           : daysLeft < 0
-                          ? "Đã hết hạn đăng ký"
-                          : "Chưa mở đăng ký"}
+                            ? "Đã hết hạn đăng ký"
+                            : "Chưa mở đăng ký"}
                       </Button>
                     )}
 
@@ -415,10 +375,10 @@ export default function Competition() {
                       </Button>
                     </div>
 
-                    {competition.website && (
+                    {norm?.website && (
                       <Button variant="outline" className="w-full mt-2" asChild>
                         <a
-                          href={competition.website}
+                          href={norm.website}
                           target="_blank"
                           rel="noopener noreferrer"
                         >
@@ -450,13 +410,20 @@ export default function Competition() {
 
                   <Separator className="my-6" />
 
-                  {/* Organizer */}
-                  <div>
-                    <div className="font-medium mb-2">Ban tổ chức</div>
-                    <div className="text-sm text-muted-foreground">
-                      {competition.organizer}
+                  {/* Organizer (from response) */}
+                  {(norm as any)?.organizer?.email || (norm as any)?.organizer?.website ? (
+                    <div>
+                      <div className="font-medium mb-2">Ban tổ chức</div>
+                      <div className="text-sm text-muted-foreground break-words">
+                        {(norm as any)?.organizer?.email && <div>Email: {(norm as any).organizer.email}</div>}
+                        {(norm as any)?.organizer?.website && (
+                          <div>
+                            Website: <a className="underline" href={(norm as any).organizer.website} target="_blank" rel="noopener noreferrer">{(norm as any).organizer.website}</a>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
+                  ) : null}
                 </CardContent>
               </Card>
             </div>
@@ -465,145 +432,22 @@ export default function Competition() {
       </section>
 
       {/* Registration Modal */}
-      {competition && !isUserRegistered && (
+      {norm && !isUserRegistered && (
         <RegistrationModal
           isOpen={isRegistrationModalOpen}
           onClose={() => setIsRegistrationModalOpen(false)}
-          competitionId={competition.id}
-          competitionTitle={competition.title}
+          competitionId={norm.id}
+          competitionTitle={norm.title}
         />
       )}
 
       {/* Content Tabs */}
       <section className="container py-8">
-        {/* Đề xuất bạn thi cho thí sinh */}
-        {!isAdmin && (
-          <div className="mb-8">
-            <Card>
-              <CardHeader>
-                <CardTitle>Đề xuất bạn thi phù hợp</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                  {recommendFriends.map((user) => (
-                    <Card key={user.id} className="card-hover">
-                      <CardContent className="pt-4 flex flex-col items-center">
-                        <Avatar className="h-14 w-14 mb-2">
-                          <AvatarImage src={user.avatar} alt={user.fullName} />
-                          <AvatarFallback>{user.fullName[0]}</AvatarFallback>
-                        </Avatar>
-                        <div className="font-semibold text-center mb-1">{user.fullName}</div>
-                        <div className="text-xs text-muted-foreground mb-1">{user.school}</div>
-                        <div className="flex items-center mb-1">
-                          {[...Array(5)].map((_, i) => (
-                            <Star
-                              key={i}
-                              className={cn(
-                                "h-3 w-3",
-                                i < Math.floor(user.rating)
-                                  ? "fill-yellow-400 text-yellow-400"
-                                  : "text-gray-300",
-                              )}
-                            />
-                          ))}
-                          <span className="text-xs ml-1">({user.rating})</span>
-                        </div>
-                        <div className="flex flex-wrap gap-1 justify-center mb-2">
-                          {user.skills.slice(0, 2).map((skill) => (
-                            <Badge key={skill.name} variant="outline" className="text-xs">
-                              {skill.name}
-                            </Badge>
-                          ))}
-                        </div>
-                        <div className="flex flex-col gap-2 w-full">
-                          <Button size="sm" variant="outline" onClick={() => window.location.href = `/user/${user.id}`}>
-                            Xem hồ sơ
-                          </Button>
-                          <Button size="sm" variant="outline" onClick={() => handleInviteUser(user)}>
-                            <UserPlus className="h-4 w-4 mr-1" />
-                            Mời tham gia
-                          </Button>
-                          <Button size="sm" variant="outline" onClick={() => handleChatWithUser(user)}>
-                            <MessageSquare className="h-4 w-4 mr-1" />
-                            Trò chuyện
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        )}
-        {/* Đề xuất thí sinh nổi bật cho ban tổ chức */}
-        {isAdmin && (
-          <div className="mb-8">
-            <Card>
-              <CardHeader>
-                <CardTitle>
-                  Thí sinh nổi bật (Đề xuất cho bạn)
-                  <span className="ml-2 text-xs text-primary font-semibold">Ban tổ chức</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                  {recommendedUsers.map((user) => (
-                    <Card key={user.id} className="card-hover">
-                      <CardContent className="pt-4 flex flex-col items-center">
-                        <Avatar className="h-14 w-14 mb-2">
-                          <AvatarImage src={user.avatar} alt={user.fullName} />
-                          <AvatarFallback>{user.fullName[0]}</AvatarFallback>
-                        </Avatar>
-                        <div className="font-semibold text-center mb-1">{user.fullName}</div>
-                        <div className="text-xs text-muted-foreground mb-1">{user.school}</div>
-                        <div className="flex items-center mb-1">
-                          {[...Array(5)].map((_, i) => (
-                            <Star
-                              key={i}
-                              className={cn(
-                                "h-3 w-3",
-                                i < Math.floor(user.rating)
-                                  ? "fill-yellow-400 text-yellow-400"
-                                  : "text-gray-300",
-                              )}
-                            />
-                          ))}
-                          <span className="text-xs ml-1">({user.rating})</span>
-                        </div>
-                        <div className="flex flex-wrap gap-1 justify-center mb-2">
-                          {user.skills.slice(0, 2).map((skill) => (
-                            <Badge key={skill.name} variant="outline" className="text-xs">
-                              {skill.name}
-                            </Badge>
-                          ))}
-                        </div>
-                        <div className="flex flex-col gap-2 w-full">
-                          <Button size="sm" variant="outline" onClick={() => window.location.href = `/user/${user.id}`}>
-                            Xem hồ sơ
-                          </Button>
-                          <Button size="sm" variant="outline" onClick={() => handleInviteUser(user)}>
-                            <UserPlus className="h-4 w-4 mr-1" />
-                            Mời tham gia
-                          </Button>
-                          <Button size="sm" variant="outline" onClick={() => handleChatWithUser(user)}>
-                            <MessageSquare className="h-4 w-4 mr-1" />
-                            Trò chuyện
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        )}
+        {/* Recommendation sections removed to match API data */}
         <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-2 lg:grid-cols-3">
+          <TabsList className="grid w-full grid-cols-2 lg:grid-cols-2">
             <TabsTrigger value="overview">Tổng quan</TabsTrigger>
             <TabsTrigger value="timeline">Lịch trình</TabsTrigger>
-            <TabsTrigger value="similar">Tương tự</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
@@ -614,15 +458,8 @@ export default function Competition() {
                     <CardTitle>Mô tả chi tiết</CardTitle>
                   </CardHeader>
                   <CardContent className="prose prose-sm max-w-none">
-                    <p className="text-muted-foreground leading-relaxed">
-                      {competition.description}
-                    </p>
-                    <p className="text-muted-foreground leading-relaxed">
-                      Đây là cơ hội tuyệt vời để thể hiện kỹ năng và học hỏi từ
-                      các chuyên gia hàng đầu trong lĩnh vực. Cuộc thi không chỉ
-                      mang lại những giải thưởng hấp dẫn mà còn giúp bạn mở rộng
-                      mạng lưới và phát triển sự nghiệp.
-                    </p>
+                    <p className="text-muted-foreground leading-relaxed">{norm?.description}</p>
+
                   </CardContent>
                 </Card>
 
@@ -632,7 +469,7 @@ export default function Competition() {
                   </CardHeader>
                   <CardContent>
                     <div className="flex flex-wrap gap-2">
-                      {competition.requiredSkills.map((skill) => (
+                      {(norm?.requiredSkills || []).map((skill: any) => (
                         <Badge
                           key={skill.name}
                           variant="secondary"
@@ -645,17 +482,14 @@ export default function Competition() {
                   </CardContent>
                 </Card>
 
-                {competition.rules && (
+                {norm?.prizePool && norm?.prizePool.length > 0 && (
                   <Card>
                     <CardHeader>
-                      <CardTitle>Thể lệ</CardTitle>
+                      <CardTitle>Giải thưởng</CardTitle>
                     </CardHeader>
                     <CardContent>
                       <div className="prose prose-sm max-w-none">
-                        <p className="text-muted-foreground">
-                          Thông tin chi tiết về thể lệ cuộc thi sẽ được cập nhật
-                          sớm.
-                        </p>
+                        <p className="text-muted-foreground">{norm.prizePool}</p>
                       </div>
                     </CardContent>
                   </Card>
@@ -670,33 +504,23 @@ export default function Competition() {
                   <CardContent className="space-y-4">
                     <div>
                       <div className="text-sm font-medium mb-1">Cấp độ</div>
-                      <Badge
-                        variant={
-                          competition.level === "expert"
-                            ? "destructive"
-                            : "outline"
-                        }
-                      >
-                        {competition.level}
-                      </Badge>
+                      {norm?.level && (
+                        <Badge
+                          variant={(norm.level as any) === "expert" ? "destructive" : "outline"}
+                        >
+                          {norm.level}
+                        </Badge>
+                      )}
                     </div>
 
                     <div>
                       <div className="text-sm font-medium mb-1">
                         Thời gian diễn ra
                       </div>
-                      <div className="text-sm text-muted-foreground">
-                        {formatDateShort(competition.startDate)} -{" "}
-                        {formatDateShort(competition.endDate)}
-                      </div>
+                      <div className="text-sm text-muted-foreground">{formatDateShort(norm?.startDate as any)} - {formatDateShort(norm?.endDate as any)}</div>
                     </div>
 
-                    <div>
-                      <div className="text-sm font-medium mb-1">Hình thức</div>
-                      <div className="text-sm text-muted-foreground">
-                        {competition.isOnline ? "Trực tuyến" : "Tại địa điểm"}
-                      </div>
-                    </div>
+                    {/* Hình thức không có trong response -> ẩn */}
                   </CardContent>
                 </Card>
               </div>
@@ -724,9 +548,7 @@ export default function Competition() {
                     <div className="flex-shrink-0 w-4 h-4 bg-orange-500 rounded-full mt-1"></div>
                     <div>
                       <div className="font-medium">Hạn đăng ký</div>
-                      <div className="text-sm text-muted-foreground">
-                        {formatDate(competition.registrationDeadline)}
-                      </div>
+                      <div className="text-sm text-muted-foreground">{formatDate(norm?.registrationDeadline as any)}</div>
                     </div>
                   </div>
 
@@ -734,9 +556,7 @@ export default function Competition() {
                     <div className="flex-shrink-0 w-4 h-4 bg-blue-500 rounded-full mt-1"></div>
                     <div>
                       <div className="font-medium">Bắt đầu cuộc thi</div>
-                      <div className="text-sm text-muted-foreground">
-                        {formatDate(competition.startDate)}
-                      </div>
+                      <div className="text-sm text-muted-foreground">{formatDate(norm?.startDate as any)}</div>
                     </div>
                   </div>
 
@@ -746,9 +566,7 @@ export default function Competition() {
                       <div className="font-medium">
                         Kết thúc và công bố kết quả
                       </div>
-                      <div className="text-sm text-muted-foreground">
-                        {formatDate(competition.endDate)}
-                      </div>
+                      <div className="text-sm text-muted-foreground">{formatDate(norm?.endDate as any)}</div>
                     </div>
                   </div>
                 </div>
@@ -756,42 +574,7 @@ export default function Competition() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="similar" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Cuộc thi tương tự</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {similarCompetitions.map((comp) => (
-                    <Card key={comp.id} className="card-hover">
-                      <CardContent className="pt-4">
-                        <div className="flex items-start gap-3">
-                          <div className="text-2xl">{getCategoryIcon()}</div>
-                          <div className="flex-1">
-                            <h3 className="font-semibold mb-1 line-clamp-2">
-                              {comp.title}
-                            </h3>
-                            <p className="text-sm text-muted-foreground mb-2 line-clamp-2">
-                              {comp.description}
-                            </p>
-                            <div className="flex items-center justify-between">
-                              <Badge variant="outline" className="text-xs">
-                                {comp.participants} người
-                              </Badge>
-                              <Button size="sm" variant="outline" asChild>
-                                <a href={`/competition/${comp.id}`}>Xem</a>
-                              </Button>
-                            </div>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
+          {/* Similar competitions tab removed */}
         </Tabs>
       </section>
     </div>

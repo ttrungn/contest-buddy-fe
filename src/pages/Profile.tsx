@@ -34,7 +34,7 @@ const skillCategories = [
 ];
 import { cn } from "@/lib/utils";
 import { useAppDispatch, useAppSelector } from "@/services/store/store";
-import { fetchCustomerProfile, uploadCustomerAvatar, updateCustomerProfile, fetchUserSkills, deleteUserSkill, updateUserSkill, fetchUserProjects, addUserProject, updateUserProject, deleteUserProject } from "@/services/features/users/userSlice";
+import { fetchCustomerProfile, uploadCustomerAvatar, updateCustomerProfile, fetchUserSkills, deleteUserSkill, updateUserSkill, fetchUserProjects, addUserProject, updateUserProject, deleteUserProject, fetchUserAchievements, addUserAchievement, updateUserAchievement, deleteUserAchievement, fetchAchievementDetail } from "@/services/features/users/userSlice";
 import { useToast } from "@/hooks/use-toast";
 import SkillManagementModal from "@/components/SkillManagementModal";
 import { Input } from "@/components/ui/input";
@@ -46,7 +46,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 export default function Profile() {
   const dispatch = useAppDispatch();
   const { toast } = useToast();
-  const { profile, userSkills, isLoading, projects } = useAppSelector((s) => s.user);
+  const { profile, userSkills, isLoading, projects, achievements } = useAppSelector((s) => s.user);
   const [isEditing, setIsEditing] = useState(false);
   const [isSkillModalOpen, setIsSkillModalOpen] = useState(false);
   const [editingSkill, setEditingSkill] = useState<string | null>(null);
@@ -81,10 +81,38 @@ export default function Profile() {
   const [uploading, setUploading] = useState(false);
   const fileInputRef = (typeof window !== "undefined") ? (document.createElement("input") as HTMLInputElement) : null;
 
+  // Achievement modal state
+  const [isAchievementModalOpen, setIsAchievementModalOpen] = useState(false);
+  const [editingAchievementId, setEditingAchievementId] = useState<string | null>(null);
+  const [achievementForm, setAchievementForm] = useState({
+    competition_name: "",
+    position: 1,
+    award: "",
+    achieved_at: "",
+    category: "",
+    description: "",
+  });
+
+  // Achievement detail modal state
+  const [isAchievementDetailOpen, setIsAchievementDetailOpen] = useState(false);
+  const [achievementDetail, setAchievementDetail] = useState<null | {
+    _id: string;
+    id: string;
+    user_id: string;
+    competition_name: string;
+    position: number;
+    award: string;
+    achieved_at: string;
+    category: string;
+    description?: string;
+  }>(null);
+  const [loadingAchievementDetail, setLoadingAchievementDetail] = useState(false);
+
   useEffect(() => {
     dispatch(fetchCustomerProfile());
     dispatch(fetchUserSkills());
     dispatch(fetchUserProjects());
+    dispatch(fetchUserAchievements());
   }, [dispatch]);
 
   useEffect(() => {
@@ -125,7 +153,15 @@ export default function Profile() {
         linkedin: profile.social_links?.linkedin || "",
         behance: "",
       },
-      achievements: [],
+      achievements: achievements.map(a => ({
+        id: a.id,
+        competitionTitle: a.competition_name,
+        position: a.position,
+        award: a.award,
+        date: new Date(a.achieved_at),
+        category: a.category,
+        teamSize: undefined,
+      })),
       portfolio: [],
       skills: userSkills.map(skill => ({
         name: skill.skill_name,
@@ -135,7 +171,7 @@ export default function Profile() {
         certifications: [],
       })),
     };
-  }, [profile, userSkills]);
+  }, [profile, userSkills, achievements]);
 
   const handleAvatarClick = () => {
     if (!fileInputRef) return;
@@ -523,7 +559,7 @@ export default function Profile() {
                       Dự án portfolio
                     </span>
                     <span className="font-semibold">
-                      {activeUser.portfolio.length}
+                      {projects.length}
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
@@ -624,9 +660,18 @@ export default function Profile() {
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <CardTitle>Thành tích thi đấu</CardTitle>
-                  <Badge variant="secondary">
-                    {activeUser.achievements.length} cuộc thi
-                  </Badge>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="secondary">
+                      {activeUser.achievements.length} cuộc thi
+                    </Badge>
+                    <Button size="sm" onClick={() => {
+                      setEditingAchievementId(null);
+                      setAchievementForm({ competition_name: "", position: 1, award: "", achieved_at: "", category: "", description: "" });
+                      setIsAchievementModalOpen(true);
+                    }}>
+                      <Plus className="h-4 w-4 mr-2" /> Thêm thành tích
+                    </Button>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent>
@@ -634,7 +679,22 @@ export default function Profile() {
                   {activeUser.achievements.map((achievement) => (
                     <div
                       key={achievement.id}
-                      className="flex items-center gap-4 p-4 rounded-lg border"
+                      className="flex items-center gap-4 p-4 rounded-lg border cursor-pointer"
+                      onClick={async (e) => {
+                        // Ignore clicks on action buttons
+                        const target = e.target as HTMLElement;
+                        if (target.closest('button')) return;
+                        try {
+                          setLoadingAchievementDetail(true);
+                          const detail = await dispatch(fetchAchievementDetail(achievement.id)).unwrap();
+                          setAchievementDetail(detail as any);
+                          setIsAchievementDetailOpen(true);
+                        } catch (err: any) {
+                          toast({ title: "Không tải được chi tiết", description: String(err), variant: "destructive" });
+                        } finally {
+                          setLoadingAchievementDetail(false);
+                        }
+                      }}
                     >
                       <div
                         className={cn(
@@ -668,6 +728,44 @@ export default function Profile() {
                             <span>Đội {achievement.teamSize} người</span>
                           )}
                         </div>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            const a = achievements.find(x => x.id === achievement.id);
+                            if (!a) return;
+                            setEditingAchievementId(a.id);
+                            setAchievementForm({
+                              competition_name: a.competition_name,
+                              position: a.position,
+                              award: a.award,
+                              achieved_at: a.achieved_at.split('T')[0],
+                              category: a.category,
+                              description: a.description || "",
+                            });
+                            setIsAchievementModalOpen(true);
+                          }}
+                          className="h-8 w-8 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                        >
+                          <Pencil className="h-3 w-3" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={async () => {
+                            try {
+                              await dispatch(deleteUserAchievement(achievement.id)).unwrap();
+                              toast({ title: "Đã xóa thành tích" });
+                            } catch (e: any) {
+                              toast({ title: "Xóa thất bại", description: String(e), variant: "destructive" });
+                            }
+                          }}
+                          className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
                       </div>
                     </div>
                   ))}
@@ -976,6 +1074,136 @@ export default function Profile() {
               </Button>
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add/Edit Achievement Modal */}
+      <Dialog open={isAchievementModalOpen} onOpenChange={setIsAchievementModalOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{editingAchievementId ? "Cập nhật thành tích" : "Thêm thành tích"}</DialogTitle>
+            <DialogDescription>
+              {editingAchievementId ? "Chỉnh sửa thông tin thành tích" : "Tạo thành tích mới"}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <Label>Tên cuộc thi</Label>
+              <Input value={achievementForm.competition_name} onChange={(e) => setAchievementForm({ ...achievementForm, competition_name: e.target.value })} placeholder="Hackathon 2023" />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label>Hạng</Label>
+                <Input type="number" min={1} value={achievementForm.position} onChange={(e) => setAchievementForm({ ...achievementForm, position: parseInt(e.target.value) || 1 })} />
+              </div>
+              <div className="space-y-1">
+                <Label>Giải thưởng</Label>
+                <Input value={achievementForm.award} onChange={(e) => setAchievementForm({ ...achievementForm, award: e.target.value })} placeholder="First Prize" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label>Ngày đạt được</Label>
+                <Input type="date" value={achievementForm.achieved_at} onChange={(e) => setAchievementForm({ ...achievementForm, achieved_at: e.target.value })} />
+              </div>
+              <div className="space-y-1">
+                <Label>Lĩnh vực</Label>
+                <Input value={achievementForm.category} onChange={(e) => setAchievementForm({ ...achievementForm, category: e.target.value })} placeholder="Programming" />
+              </div>
+            </div>
+            <div className="space-y-1">
+              <Label>Mô tả</Label>
+              <Textarea rows={3} value={achievementForm.description} onChange={(e) => setAchievementForm({ ...achievementForm, description: e.target.value })} placeholder="Mô tả ngắn về thành tích" />
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="outline" onClick={() => setIsAchievementModalOpen(false)}>Hủy</Button>
+              <Button onClick={async () => {
+                try {
+                  if (editingAchievementId) {
+                    await dispatch(updateUserAchievement({
+                      id: editingAchievementId, data: {
+                        competition_name: achievementForm.competition_name,
+                        position: achievementForm.position,
+                        award: achievementForm.award,
+                        achieved_at: achievementForm.achieved_at,
+                        category: achievementForm.category,
+                        description: achievementForm.description || undefined,
+                      }
+                    })).unwrap();
+                    toast({ title: "Đã cập nhật thành tích" });
+                  } else {
+                    await dispatch(addUserAchievement({
+                      competition_name: achievementForm.competition_name,
+                      position: achievementForm.position,
+                      award: achievementForm.award,
+                      achieved_at: achievementForm.achieved_at,
+                      category: achievementForm.category,
+                      description: achievementForm.description || undefined,
+                    })).unwrap();
+                    toast({ title: "Đã thêm thành tích" });
+                  }
+                  setIsAchievementModalOpen(false);
+                  setEditingAchievementId(null);
+                } catch (e: any) {
+                  toast({ title: "Lưu thất bại", description: String(e), variant: "destructive" });
+                }
+              }} disabled={!achievementForm.competition_name || !achievementForm.award || !achievementForm.achieved_at || !achievementForm.category}>
+                {editingAchievementId ? "Cập nhật" : "Thêm"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Achievement Detail Modal */}
+      <Dialog open={isAchievementDetailOpen} onOpenChange={setIsAchievementDetailOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Chi tiết thành tích</DialogTitle>
+            <DialogDescription>
+              {loadingAchievementDetail ? "Đang tải..." : "Thông tin chi tiết về thành tích"}
+            </DialogDescription>
+          </DialogHeader>
+
+          {achievementDetail && (
+            <div className="space-y-5">
+              {/* Header */}
+              <div className="flex items-start gap-3">
+                <div className="w-12 h-12 rounded-full flex items-center justify-center text-white"
+                  style={{
+                    background:
+                      achievementDetail.position === 1 ? '#eab308' :
+                        achievementDetail.position === 2 ? '#9ca3af' :
+                          achievementDetail.position === 3 ? '#f97316' : '#3b82f6'
+                  }}>
+                  <Trophy className="h-6 w-6" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-semibold">{achievementDetail.competition_name}</h3>
+                  <div className="flex flex-wrap items-center gap-2 mt-1">
+                    <Badge variant="secondary">{achievementDetail.category}</Badge>
+                    <Badge variant="outline">Hạng {achievementDetail.position}</Badge>
+                    <Badge className="bg-purple-600 text-white">{achievementDetail.award}</Badge>
+                  </div>
+                </div>
+              </div>
+
+              {/* Meta */}
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Calendar className="h-4 w-4" />
+                <span>{formatDate(new Date(achievementDetail.achieved_at))}</span>
+              </div>
+
+              {/* Description */}
+              {achievementDetail.description && (
+                <div className="rounded-md bg-muted/40 p-3 text-sm leading-relaxed">
+                  {achievementDetail.description}
+                </div>
+              )}
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 

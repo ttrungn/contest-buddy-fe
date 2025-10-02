@@ -15,7 +15,7 @@ export default function Footer() {
               <span className="text-xl font-bold gradient-text">Contest Buddy</span>
             </div>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              Nền tảng cuộc thi hàng đầu Việt Nam, kết nối thí sinh với những cơ hội thi đấu chất lượng 
+              Nền tảng cuộc thi hàng đầu Việt Nam, kết nối thí sinh với những cơ hội thi đấu chất lượng
               và xây dựng cộng đồng học tập sôi động.
             </p>
             <div className="flex space-x-3">
@@ -39,7 +39,7 @@ export default function Footer() {
             <h3 className="font-semibold text-lg">Tính năng nền tảng</h3>
             <ul className="space-y-2 text-sm text-muted-foreground">
               <li>
-                <Link to="/" className="hover:text-foreground transition-colors">
+                <Link to="/competitions" className="hover:text-foreground transition-colors">
                   Tìm kiếm cuộc thi
                 </Link>
               </li>
@@ -71,27 +71,27 @@ export default function Footer() {
             <h3 className="font-semibold text-lg">Danh mục cuộc thi</h3>
             <ul className="space-y-2 text-sm text-muted-foreground">
               <li>
-                <Link to="/?category=programming" className="hover:text-foreground transition-colors">
+                <Link to="/competitions?category=programming" className="hover:text-foreground transition-colors">
                   Lập trình & Công nghệ
                 </Link>
               </li>
               <li>
-                <Link to="/?category=design" className="hover:text-foreground transition-colors">
+                <Link to="/competitions?category=design" className="hover:text-foreground transition-colors">
                   Thiết kế & Sáng tạo
                 </Link>
               </li>
               <li>
-                <Link to="/?category=startup" className="hover:text-foreground transition-colors">
+                <Link to="/competitions?category=startup" className="hover:text-foreground transition-colors">
                   Khởi nghiệp & Kinh doanh
                 </Link>
               </li>
               <li>
-                <Link to="/?category=science" className="hover:text-foreground transition-colors">
+                <Link to="/competitions?category=science" className="hover:text-foreground transition-colors">
                   Khoa học & Nghiên cứu
                 </Link>
               </li>
               <li>
-                <Link to="/?category=mathematics" className="hover:text-foreground transition-colors">
+                <Link to="/competitions?category=mathematics" className="hover:text-foreground transition-colors">
                   Toán học & Logic
                 </Link>
               </li>

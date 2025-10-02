@@ -6,6 +6,8 @@ import {
   USER_SKILLS_ENDPOINT,
   ALL_SKILLS_ENDPOINT,
   USER_PROJECTS_ENDPOINT,
+  USER_ACHIEVEMENTS_ENDPOINT,
+  ACHIEVEMENT_DETAIL_ENDPOINT,
 } from "@/services/constant/apiConfig";
 import {
   CustomerProfile,
@@ -71,6 +73,7 @@ interface UserState {
   userSkills: UserSkill[];
   allSkills: AllSkill[];
   projects: UserProject[];
+  achievements: UserAchievement[];
   isLoading: boolean;
   error: string | null;
 }
@@ -80,6 +83,7 @@ const initialState: UserState = {
   userSkills: [],
   allSkills: [],
   projects: [],
+  achievements: [],
   isLoading: false,
   error: null,
 };
@@ -114,6 +118,54 @@ export interface UpdateProjectResponse {
   success: boolean;
   message: string;
   project: UserProject;
+}
+
+// ===== Achievements =====
+export interface UserAchievement {
+  _id: string;
+  id: string;
+  user_id: string;
+  competition_name: string;
+  position: number;
+  award: string;
+  achieved_at: string; // ISO string
+  category: string;
+  description?: string;
+}
+
+export interface AchievementsResponse {
+  success: boolean;
+  achievements: UserAchievement[];
+}
+
+export interface AchievementResponse {
+  success: boolean;
+  message?: string;
+  achievement: UserAchievement;
+}
+
+export interface CreateAchievementRequest {
+  competition_name: string;
+  position: number;
+  award: string;
+  achieved_at: string; // YYYY-MM-DD
+  category: string;
+  description?: string;
+}
+
+export interface UpdateAchievementRequest {
+  id: string; // id (not _id)
+  data: Partial<
+    Pick<
+      CreateAchievementRequest,
+      | "competition_name"
+      | "position"
+      | "award"
+      | "achieved_at"
+      | "category"
+      | "description"
+    >
+  >;
 }
 
 export const fetchUserProjects = createAsyncThunk<
@@ -163,6 +215,90 @@ export const updateUserProject = createAsyncThunk<
   } catch (err: any) {
     return rejectWithValue(
       err.response?.data?.message || "Cập nhật dự án thất bại",
+    );
+  }
+});
+
+// ===== Achievements thunks =====
+export const fetchUserAchievements = createAsyncThunk<
+  UserAchievement[],
+  void,
+  { rejectValue: string }
+>("user/fetchUserAchievements", async (_, { rejectWithValue }) => {
+  try {
+    const res = await api.get<AchievementsResponse>(USER_ACHIEVEMENTS_ENDPOINT);
+    return res.achievements || [];
+  } catch (err: any) {
+    return rejectWithValue(
+      err.response?.data?.message || "Lỗi tải danh sách thành tích",
+    );
+  }
+});
+
+export const addUserAchievement = createAsyncThunk<
+  UserAchievement,
+  CreateAchievementRequest,
+  { rejectValue: string }
+>("user/addUserAchievement", async (payload, { rejectWithValue }) => {
+  try {
+    const res = await api.post<AchievementResponse>(
+      USER_ACHIEVEMENTS_ENDPOINT,
+      payload,
+    );
+    return res.achievement;
+  } catch (err: any) {
+    return rejectWithValue(
+      err.response?.data?.message || "Thêm thành tích thất bại",
+    );
+  }
+});
+
+export const updateUserAchievement = createAsyncThunk<
+  UserAchievement,
+  UpdateAchievementRequest,
+  { rejectValue: string }
+>("user/updateUserAchievement", async ({ id, data }, { rejectWithValue }) => {
+  try {
+    const res = await api.put<AchievementResponse>(
+      `${USER_ACHIEVEMENTS_ENDPOINT}/${id}`,
+      data,
+    );
+    return res.achievement;
+  } catch (err: any) {
+    return rejectWithValue(
+      err.response?.data?.message || "Cập nhật thành tích thất bại",
+    );
+  }
+});
+
+export const deleteUserAchievement = createAsyncThunk<
+  string,
+  string,
+  { rejectValue: string }
+>("user/deleteUserAchievement", async (id, { rejectWithValue }) => {
+  try {
+    await api.delete(`${USER_ACHIEVEMENTS_ENDPOINT}/${id}`);
+    return id;
+  } catch (err: any) {
+    return rejectWithValue(
+      err.response?.data?.message || "Xóa thành tích thất bại",
+    );
+  }
+});
+
+export const fetchAchievementDetail = createAsyncThunk<
+  UserAchievement,
+  string,
+  { rejectValue: string }
+>("user/fetchAchievementDetail", async (id, { rejectWithValue }) => {
+  try {
+    const res = await api.get<AchievementResponse>(
+      ACHIEVEMENT_DETAIL_ENDPOINT(id),
+    );
+    return res.achievement;
+  } catch (err: any) {
+    return rejectWithValue(
+      err.response?.data?.message || "Lỗi tải chi tiết thành tích",
     );
   }
 });
@@ -446,6 +582,62 @@ const userSlice = createSlice({
       .addCase(addUserProject.rejected, (state, action) => {
         state.isLoading = false;
         state.error = (action.payload as string) || "Thêm dự án thất bại";
+      })
+      // Achievements
+      .addCase(fetchUserAchievements.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(fetchUserAchievements.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.achievements = action.payload;
+      })
+      .addCase(fetchUserAchievements.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error =
+          (action.payload as string) || "Lỗi tải danh sách thành tích";
+      })
+      .addCase(addUserAchievement.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(addUserAchievement.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.achievements.unshift(action.payload);
+      })
+      .addCase(addUserAchievement.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = (action.payload as string) || "Thêm thành tích thất bại";
+      })
+      .addCase(updateUserAchievement.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(updateUserAchievement.fulfilled, (state, action) => {
+        state.isLoading = false;
+        const idx = state.achievements.findIndex(
+          (a) => a.id === action.payload.id,
+        );
+        if (idx !== -1) state.achievements[idx] = action.payload;
+      })
+      .addCase(updateUserAchievement.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error =
+          (action.payload as string) || "Cập nhật thành tích thất bại";
+      })
+      .addCase(deleteUserAchievement.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(deleteUserAchievement.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.achievements = state.achievements.filter(
+          (a) => a.id !== action.payload,
+        );
+      })
+      .addCase(deleteUserAchievement.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = (action.payload as string) || "Xóa thành tích thất bại";
       })
       .addCase(updateUserProject.pending, (state) => {
         state.isLoading = true;

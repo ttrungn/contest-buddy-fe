@@ -75,12 +75,15 @@ export default function CompetitionCard({
     return iconMap[competition.category] || "🏆";
   };
 
-  const formatDate = (date: Date) => {
+  const formatDate = (date: Date | string | undefined) => {
+    if (!date) return "--/--";
+    const d = new Date(date);
+    if (isNaN(d.getTime())) return "--/--";
     return new Intl.DateTimeFormat("vi-VN", {
       day: "2-digit",
       month: "2-digit",
       year: "numeric",
-    }).format(new Date(date));
+    }).format(d);
   };
 
   if (variant === "compact") {
@@ -121,7 +124,7 @@ export default function CompetitionCard({
       className={cn(
         "card-hover group cursor-pointer",
         variant === "featured" &&
-          "border-primary shadow-medium bg-gradient-to-br from-primary/5 to-purple-500/5",
+        "border-primary shadow-medium bg-gradient-to-br from-primary/5 to-purple-500/5",
       )}
       onClick={(e) => {
         if ((e.target as HTMLElement).closest("a[rel='noopener noreferrer']")) return;

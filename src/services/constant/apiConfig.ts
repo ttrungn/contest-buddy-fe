@@ -25,3 +25,24 @@ export const ALL_SKILLS_ENDPOINT = `${BASE_URL}/api/skills`;
 
 // User portfolio projects endpoints
 export const USER_PROJECTS_ENDPOINT = `${BASE_URL}/api/user/projects`;
+
+// User achievements endpoints
+export const USER_ACHIEVEMENTS_ENDPOINT = `${BASE_URL}/api/user/achievements`;
+export const ACHIEVEMENT_DETAIL_ENDPOINT = (id: string) =>
+  `${BASE_URL}/api/achievements/${id}`;
+
+// Organizer endpoints
+export const ORGANIZER_PROFILE_ENDPOINT = `${BASE_URL}/api/organizer/profile`;
+export const ORGANIZER_AVATAR_ENDPOINT = `${BASE_URL}/api/organizer/avatar`;
+
+// Competition endpoints
+export const COMPETITIONS_ENDPOINT = `${BASE_URL}/api/competitions`;
+export const COMPETITIONS_FEATURED_ENDPOINT = `${BASE_URL}/api/competitions/featured`;
+export const COMPETITIONS_BY_CATEGORY_ENDPOINT = (category: string) =>
+  `${BASE_URL}/api/competitions/category/${category}`;
+export const COMPETITIONS_BY_STATUS_ENDPOINT = (status: string) =>
+  `${BASE_URL}/api/competitions/status/${status}`;
+export const COMPETITION_DETAIL_ENDPOINT = (id: string) =>
+  `${BASE_URL}/api/competitions/${id}`;
+export const COMPETITION_PARTICIPANTS_ENDPOINT = (id: string) =>
+  `${BASE_URL}/api/competitions/${id}/participants`;

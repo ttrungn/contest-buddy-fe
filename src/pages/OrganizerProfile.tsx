@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,13 +6,13 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { 
-  Building2, 
-  Mail, 
-  Phone, 
-  MapPin, 
-  Globe, 
-  Users, 
+import {
+  Building2,
+  Mail,
+  Phone,
+  MapPin,
+  Globe,
+  Users,
   Calendar,
   Edit3,
   Save,
@@ -21,6 +21,8 @@ import {
   AlertCircle
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAppDispatch, useAppSelector } from "@/services/store/store";
+import { fetchOrganizerProfile, updateOrganizerProfile, uploadOrganizerAvatar } from "@/services/features/organizer/organizerSlice";
 
 interface OrganizerInfo {
   name: string;
@@ -37,23 +39,53 @@ interface OrganizerInfo {
 
 export default function OrganizerProfile() {
   const { toast } = useToast();
+  const dispatch = useAppDispatch();
+  const { profile, isLoading } = useAppSelector((s) => s.organizer);
   const [isEditing, setIsEditing] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  
+  const [isSaving, setIsSaving] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const [organizerInfo, setOrganizerInfo] = useState<OrganizerInfo>({
-    name: "Tech Innovation Hub",
-    email: "contact@techinnovationhub.com",
-    phone: "+84 123 456 789",
-    address: "123 Đường ABC, Quận 1, TP.HCM",
-    website: "https://techinnovationhub.com",
-    description: "Tổ chức hàng đầu về các cuộc thi công nghệ và sáng tạo tại Việt Nam. Chúng tôi cam kết mang đến những trải nghiệm thi đấu chất lượng cao và cơ hội phát triển cho các tài năng trẻ.",
-    foundedDate: "2020-01-15",
-    memberCount: 25,
-    verified: true,
-    logo: "/placeholder.svg"
+    name: "",
+    email: "",
+    phone: "",
+    address: "",
+    website: "",
+    description: "",
+    foundedDate: "",
+    memberCount: 0,
+    verified: false,
+    logo: "/placeholder.svg",
   });
 
   const [formData, setFormData] = useState<OrganizerInfo>(organizerInfo);
+
+  // Fetch organizer profile on mount
+  useEffect(() => {
+    dispatch(fetchOrganizerProfile()).unwrap().catch(() => {
+      toast({ title: "Lỗi", description: "Không tải được hồ sơ ban tổ chức", variant: "destructive" });
+    });
+  }, [dispatch, toast]);
+
+  // Sync store profile to local UI states
+  useEffect(() => {
+    if (profile) {
+      const mapped: OrganizerInfo = {
+        name: profile.organizerName || "",
+        email: profile.organizerEmail || profile.email || "",
+        phone: profile.phone || "",
+        address: profile.address || "",
+        website: profile.website || "",
+        description: profile.description || "",
+        foundedDate: "",
+        memberCount: 0,
+        verified: true,
+        logo: profile.avatar_url || "/placeholder.svg",
+      };
+      setOrganizerInfo(mapped);
+      setFormData(mapped);
+    }
+  }, [profile]);
 
   const handleInputChange = (field: keyof OrganizerInfo, value: string | number) => {
     setFormData(prev => ({
@@ -63,28 +95,48 @@ export default function OrganizerProfile() {
   };
 
   const handleSave = async () => {
-    setIsLoading(true);
+    setIsSaving(true);
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
+      await dispatch(
+        updateOrganizerProfile({
+          name: formData.name,
+          email: formData.email,
+          description: formData.description,
+          address: formData.address,
+          phone: formData.phone,
+          website: formData.website,
+          full_name: profile?.full_name,
+        }),
+      ).unwrap();
+
       setOrganizerInfo(formData);
       setIsEditing(false);
-      
       toast({
         title: "Thành công!",
         description: "Thông tin ban tổ chức đã được cập nhật.",
         action: <CheckCircle className="h-4 w-4 text-green-500" />,
       });
-    } catch (error) {
+    } catch (error: any) {
       toast({
         title: "Lỗi!",
-        description: "Không thể cập nhật thông tin. Vui lòng thử lại.",
+        description: error || "Không thể cập nhật thông tin. Vui lòng thử lại.",
         variant: "destructive",
         action: <AlertCircle className="h-4 w-4" />,
       });
     } finally {
-      setIsLoading(false);
+      setIsSaving(false);
+    }
+  };
+
+  const onPickLogo = () => fileInputRef.current?.click();
+  const onLogoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      await dispatch(uploadOrganizerAvatar(file)).unwrap();
+      toast({ title: "Đã cập nhật logo" });
+    } catch (error: any) {
+      toast({ title: "Upload thất bại", description: String(error), variant: "destructive" });
     }
   };
 
@@ -122,9 +174,9 @@ export default function OrganizerProfile() {
                   <X className="h-4 w-4 mr-2" />
                   Hủy
                 </Button>
-                <Button onClick={handleSave} disabled={isLoading}>
+                <Button onClick={handleSave} disabled={isSaving || isLoading}>
                   <Save className="h-4 w-4 mr-2" />
-                  {isLoading ? "Đang lưu..." : "Lưu thay đổi"}
+                  {isSaving ? "Đang lưu..." : "Lưu thay đổi"}
                 </Button>
               </div>
             )}
@@ -165,7 +217,7 @@ export default function OrganizerProfile() {
                       </div>
                     )}
                   </div>
-                  
+
                   <div className="space-y-2">
                     <Label htmlFor="email">Email liên hệ *</Label>
                     {isEditing ? (
@@ -293,39 +345,26 @@ export default function OrganizerProfile() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="text-center">
-                <div className="w-32 h-32 mx-auto bg-muted rounded-lg flex items-center justify-center mb-4">
-                  <Building2 className="h-12 w-12 text-muted-foreground" />
+                <div className="w-32 h-32 mx-auto bg-muted rounded-lg flex items-center justify-center mb-4 overflow-hidden">
+                  {organizerInfo.logo ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={organizerInfo.logo} alt="Logo" className="w-full h-full object-cover" />
+                  ) : (
+                    <Building2 className="h-12 w-12 text-muted-foreground" />
+                  )}
                 </div>
                 {isEditing && (
-                  <Button variant="outline" size="sm">
-                    Thay đổi logo
-                  </Button>
+                  <>
+                    <input ref={fileInputRef} type="file" accept="image/*" onChange={onLogoChange} className="hidden" />
+                    <Button variant="outline" size="sm" onClick={onPickLogo}>
+                      Thay đổi logo
+                    </Button>
+                  </>
                 )}
               </CardContent>
             </Card>
 
-            {/* Founded Date */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Calendar className="h-5 w-5 mr-2" />
-                  Ngày thành lập
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {isEditing ? (
-                  <Input
-                    type="date"
-                    value={formData.foundedDate}
-                    onChange={(e) => handleInputChange('foundedDate', e.target.value)}
-                  />
-                ) : (
-                  <div className="p-3 bg-muted rounded-md">
-                    {new Date(organizerInfo.foundedDate).toLocaleDateString('vi-VN')}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+
 
             {/* Verification Status */}
             <Card>
