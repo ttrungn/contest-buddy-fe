@@ -6,6 +6,7 @@ import authReducer from "../features/auth/authSlice";
 import userReducer from "../features/users/userSlice";
 import organizerReducer from "../features/organizer/organizerSlice";
 import competitionsReducer from "../features/competitions/competitionsSlice";
+import plansReducer from "../features/plans/plansSlice";
 
 const presistConfig = {
   key: "root",
@@ -19,6 +20,7 @@ const rootReducer = combineReducers({
   user: userReducer,
   organizer: organizerReducer,
   competitions: competitionsReducer,
+  plans: plansReducer,
 });
 
 const persistedReducer = persistReducer(presistConfig, rootReducer);

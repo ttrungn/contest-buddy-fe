@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Calendar, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,7 +23,13 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
-import { Competition, CompetitionCategory, CompetitionLevel } from "@/types";
+import { Competition } from "@/types";
+import { CompetitionCategory, CompetitionLevel } from "@/interfaces/ICompetition";
+import { useAppDispatch, useAppSelector } from "@/services/store/store";
+import { createCompetition } from "@/services/features/competitions/competitionsSlice";
+import { fetchPlans } from "@/services/features/plans/plansSlice";
+import { CreateCompetitionRequest, CompetitionStatus } from "@/interfaces/ICompetition";
+import { Plan } from "@/interfaces/IPlan";
 
 interface CreateCompetitionModalProps {
     isOpen: boolean;
@@ -32,21 +38,19 @@ interface CreateCompetitionModalProps {
 }
 
 const categories: { value: CompetitionCategory; label: string }[] = [
-    { value: "programming", label: "Lập trình" },
-    { value: "design", label: "Thiết kế" },
-    { value: "business", label: "Kinh doanh" },
-    { value: "science", label: "Khoa học" },
-    { value: "mathematics", label: "Toán học" },
-    { value: "innovation", label: "Sáng tạo" },
-    { value: "startup", label: "Khởi nghiệp" },
-    { value: "creative", label: "Sáng tạo" },
+    { value: "hackathon", label: "Hackathon" },
+    { value: "datathon", label: "Datathon" },
+    { value: "designathon", label: "Designathon" },
+    { value: "business_case", label: "Business Case" },
+    { value: "coding_contest", label: "Coding Contest" },
+    { value: "other", label: "Khác" },
 ];
 
 const levels: { value: CompetitionLevel; label: string }[] = [
     { value: "beginner", label: "Cơ bản" },
     { value: "intermediate", label: "Trung bình" },
     { value: "advanced", label: "Nâng cao" },
-    { value: "expert", label: "Chuyên gia" },
+    { value: "all_levels", label: "Tất cả cấp độ" },
 ];
 
 const availableSkills = [
@@ -64,6 +68,9 @@ export default function CreateCompetitionModal({
     onSuccess,
 }: CreateCompetitionModalProps) {
     const { toast } = useToast();
+    const dispatch = useAppDispatch();
+    const { user } = useAppSelector((state) => state.auth);
+    const { plans, isLoading: plansLoading } = useAppSelector((state) => state.plans);
     const [isLoading, setIsLoading] = useState(false);
     const [currentStep, setCurrentStep] = useState(1);
 
@@ -71,14 +78,15 @@ export default function CreateCompetitionModal({
         title: "",
         description: "",
         category: "" as CompetitionCategory,
-        organizer: "",
+        planId: "",
         startDate: "",
         endDate: "",
         registrationDeadline: "",
         location: "",
-        isOnline: false,
         prizePool: "",
         maxParticipants: "",
+        isRegisteredAsTeam: false,
+        maxParticipantsPerTeam: 4,
         level: "" as CompetitionLevel,
         tags: [] as string[],
         imageUrl: "",
@@ -98,6 +106,13 @@ export default function CreateCompetitionModal({
 
     const [newTag, setNewTag] = useState("");
     const [skillSearch, setSkillSearch] = useState("");
+
+    // Fetch plans when modal opens
+    useEffect(() => {
+        if (isOpen && plans.length === 0) {
+            dispatch(fetchPlans());
+        }
+    }, [isOpen, dispatch, plans.length]);
 
     const handleInputChange = (field: string, value: any) => {
         setFormData(prev => ({ ...prev, [field]: value }));
@@ -144,7 +159,7 @@ export default function CreateCompetitionModal({
     const validateStep = (step: number) => {
         switch (step) {
             case 1:
-                return formData.title && formData.description && formData.category && formData.organizer;
+                return formData.title && formData.description && formData.category && formData.planId;
             case 2:
                 return formData.startDate && formData.endDate && formData.registrationDeadline && formData.location;
             case 3:
@@ -164,42 +179,53 @@ export default function CreateCompetitionModal({
             return;
         }
 
+        if (!user) {
+            toast({
+                title: "Lỗi",
+                description: "Bạn cần đăng nhập để tạo cuộc thi",
+                variant: "destructive",
+            });
+            return;
+        }
+
         setIsLoading(true);
 
         try {
-            // Simulate API call
-            await new Promise(resolve => setTimeout(resolve, 2000));
-
-            const newCompetition: Partial<Competition> = {
-                id: Date.now().toString(),
+            // Prepare API request
+            const createRequest: CreateCompetitionRequest = {
                 title: formData.title,
                 description: formData.description,
                 category: formData.category,
-                organizer: formData.organizer,
-                startDate: new Date(formData.startDate),
-                endDate: new Date(formData.endDate),
-                registrationDeadline: new Date(formData.registrationDeadline),
+                plan_id: formData.planId,
+                start_date: new Date(formData.startDate).toISOString(),
+                end_date: new Date(formData.endDate).toISOString(),
+                registration_deadline: new Date(formData.registrationDeadline).toISOString(),
                 location: formData.location,
-                isOnline: formData.isOnline,
-                prizePool: formData.prizePool || undefined,
-                participants: 0,
-                maxParticipants: formData.maxParticipants ? parseInt(formData.maxParticipants) : undefined,
-                requiredSkills: formData.requiredSkills.map(skill => ({ name: skill, category: "technical" })),
+                prize_pool_text: formData.prizePool || undefined,
+                max_participants: formData.maxParticipants ? parseInt(formData.maxParticipants) : undefined,
+                isRegisteredAsTeam: formData.isRegisteredAsTeam,
+                maxParticipantsPerTeam: formData.maxParticipantsPerTeam,
                 level: formData.level,
-                tags: formData.tags,
-                imageUrl: formData.imageUrl || undefined,
+                image_url: formData.imageUrl || undefined,
                 website: formData.website || undefined,
                 rules: formData.rules || undefined,
                 featured: formData.featured,
-                status: "upcoming" as const,
+                status: "published" as CompetitionStatus,
+                competitionTags: formData.tags,
+                competitionRequiredSkills: formData.requiredSkills.map(skill => ({
+                    name: skill,
+                    category: "technical" as const
+                })),
             };
+
+            const result = await dispatch(createCompetition(createRequest)).unwrap();
 
             toast({
                 title: "Thành công!",
                 description: "Cuộc thi đã được tạo thành công",
             });
 
-            onSuccess?.(newCompetition);
+            onSuccess?.(result.data as any);
             onClose();
 
             // Reset form
@@ -207,14 +233,15 @@ export default function CreateCompetitionModal({
                 title: "",
                 description: "",
                 category: "" as CompetitionCategory,
-                organizer: "",
+                planId: "",
                 startDate: "",
                 endDate: "",
                 registrationDeadline: "",
                 location: "",
-                isOnline: false,
                 prizePool: "",
                 maxParticipants: "",
+                isRegisteredAsTeam: false,
+                maxParticipantsPerTeam: 4,
                 level: "" as CompetitionLevel,
                 tags: [],
                 imageUrl: "",
@@ -231,10 +258,10 @@ export default function CreateCompetitionModal({
                 maxTeamSize: 5,
             });
             setCurrentStep(1);
-        } catch (error) {
+        } catch (error: any) {
             toast({
                 title: "Lỗi",
-                description: "Có lỗi xảy ra khi tạo cuộc thi",
+                description: error || "Có lỗi xảy ra khi tạo cuộc thi",
                 variant: "destructive",
             });
         } finally {
@@ -283,6 +310,36 @@ export default function CreateCompetitionModal({
                 />
             </div>
 
+            <div className="space-y-2">
+                <Label>Gói dịch vụ *</Label>
+                <Select
+                    value={formData.planId}
+                    onValueChange={(value) => handleInputChange("planId", value)}
+                >
+                    <SelectTrigger>
+                        <SelectValue placeholder="Chọn gói dịch vụ" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {plansLoading ? (
+                            <div className="px-2 py-1.5 text-sm text-muted-foreground">Đang tải...</div>
+                        ) : plans.length === 0 ? (
+                            <div className="px-2 py-1.5 text-sm text-muted-foreground">Không có gói dịch vụ</div>
+                        ) : (
+                            plans.map((plan) => (
+                                <SelectItem key={plan.id} value={plan.id}>
+                                    {plan.name} - {plan.price_amount.toLocaleString('vi-VN')} {plan.currency}
+                                </SelectItem>
+                            ))
+                        )}
+                    </SelectContent>
+                </Select>
+                {formData.planId && (
+                    <p className="text-sm text-muted-foreground">
+                        {plans.find(p => p.id === formData.planId)?.description}
+                    </p>
+                )}
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                     <Label>Danh mục *</Label>
@@ -304,13 +361,18 @@ export default function CreateCompetitionModal({
                 </div>
 
                 <div className="space-y-2">
-                    <Label htmlFor="organizer">Ban tổ chức *</Label>
-                    <Input
-                        id="organizer"
-                        placeholder="VD: Đại học Bách Khoa"
-                        value={formData.organizer}
-                        onChange={(e) => handleInputChange("organizer", e.target.value)}
-                    />
+                    <Label>Trạng thái *</Label>
+                    <Select
+                        value="published"
+                        disabled
+                    >
+                        <SelectTrigger>
+                            <SelectValue placeholder="Chọn trạng thái" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="published">Đã xuất bản</SelectItem>
+                        </SelectContent>
+                    </Select>
                 </div>
             </div>
 
@@ -384,12 +446,26 @@ export default function CreateCompetitionModal({
 
             <div className="flex items-center space-x-2">
                 <Checkbox
-                    id="isOnline"
-                    checked={formData.isOnline}
-                    onCheckedChange={(checked) => handleInputChange("isOnline", checked)}
+                    id="isRegisteredAsTeam"
+                    checked={formData.isRegisteredAsTeam}
+                    onCheckedChange={(checked) => handleInputChange("isRegisteredAsTeam", checked)}
                 />
-                <Label htmlFor="isOnline">Cuộc thi online</Label>
+                <Label htmlFor="isRegisteredAsTeam">Đăng ký theo nhóm</Label>
             </div>
+
+            {formData.isRegisteredAsTeam && (
+                <div className="space-y-2">
+                    <Label htmlFor="maxParticipantsPerTeam">Số thành viên tối đa trong nhóm</Label>
+                    <Input
+                        id="maxParticipantsPerTeam"
+                        type="number"
+                        min="2"
+                        max="10"
+                        value={formData.maxParticipantsPerTeam}
+                        onChange={(e) => handleInputChange("maxParticipantsPerTeam", parseInt(e.target.value))}
+                    />
+                </div>
+            )}
 
             <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
