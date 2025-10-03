@@ -1,5 +1,5 @@
 import CompetitionCard from "@/components/CompetitionCard";
-import { mockUsers, competitionCategories } from "@/lib/mockData";
+import { competitionCategories } from "@/lib/mockData";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,16 +11,18 @@ import { Badge } from "@/components/ui/badge";
 import { Search, ArrowRight, Trophy, Users, Building2 } from "lucide-react";
 import { useAppDispatch, useAppSelector } from "@/services/store/store";
 import { fetchFeaturedCompetitions } from "@/services/features/competitions/competitionsSlice";
+import { fetchCommunityProfiles } from "@/services/features/community/communitySlice";
+import { CommunityUser } from "@/interfaces/ICommunity";
 import { useEffect } from "react";
 
-function UserCard({ user }) {
+function UserCard({ user }: { user: CommunityUser }) {
   const navigate = useNavigate();
   return (
-    <Card className="card-hover cursor-pointer" onClick={() => navigate(`/user/${user.id}`)}>
+    <Card className="card-hover cursor-pointer" onClick={() => navigate(`/user/${user.userId}`)}>
       <CardHeader className="pb-3">
         <div className="flex items-start space-x-4 w-full">
           <Avatar className="h-16 w-16">
-            <AvatarImage src={user.avatar} alt={user.fullName} />
+            <AvatarImage src={user.avatarUrl} alt={user.fullName} />
             <AvatarFallback className="text-lg">
               {user.fullName
                 .split(" ")
@@ -60,7 +62,7 @@ function UserCard({ user }) {
             </p>
             <p className="text-sm text-muted-foreground mb-2 text-left flex items-center">
               <MapPin className="h-4 w-4 mr-1" />
-              {user.location.city}
+              {user.city}, {user.region}
             </p>
             <div className="space-y-1 text-xs text-muted-foreground mb-2">
               <div className="flex items-center">
@@ -83,9 +85,13 @@ export default function Home() {
   const dispatch = useAppDispatch();
   const { isAuthenticated } = useAppSelector((state) => state.auth);
   const { featured } = useAppSelector((s) => s.competitions);
+  const { users: communityUsers } = useAppSelector((s) => s.community);
+  
   useEffect(() => {
     dispatch(fetchFeaturedCompetitions({ page: 1, limit: 6 }));
+    dispatch(fetchCommunityProfiles({ page: 1, limit: 3 }));
   }, [dispatch]);
+  
   const competitions = featured.slice(0, 6).map((c) => ({
     id: c.id,
     title: c.title,
@@ -105,7 +111,8 @@ export default function Home() {
     status: "upcoming" as any,
     imageUrl: (c as any).image_url || (c as any).imageUrl,
   }));
-  const users = mockUsers.slice(0, 5);
+  
+  const users = communityUsers.slice(0, 3);
 
   return (
     <div className="min-h-screen bg-background">
@@ -180,7 +187,7 @@ export default function Home() {
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-4">
             {users.map((user) => (
-              <UserCard key={user.id} user={user} />
+              <UserCard key={user.userId} user={user} />
             ))}
           </div>
           <Button onClick={() => navigate("/community")}>Xem thêm bạn thi</Button>

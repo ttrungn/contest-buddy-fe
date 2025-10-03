@@ -16,6 +16,7 @@ export const REFRESH_TOKEN_ENDPOINT = `${BASE_URL}/api/auth/refresh-token`;
 export const CHANGE_PASSWORD_ENDPOINT = `${BASE_URL}/api/auth/change-password`;
 
 // Customer profile endpoints
+export const CUSTOMER_PROFILES_ENDPOINT = `${BASE_URL}/api/customers`;
 export const CUSTOMER_PROFILE_ENDPOINT = `${BASE_URL}/api/customer/profile`;
 export const CUSTOMER_AVATAR_ENDPOINT = `${BASE_URL}/api/customer/avatar`;
 

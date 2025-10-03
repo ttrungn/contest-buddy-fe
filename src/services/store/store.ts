@@ -4,6 +4,7 @@ import { persistReducer, persistStore } from "redux-persist";
 import storage from "redux-persist/lib/storage";
 import authReducer from "../features/auth/authSlice";
 import userReducer from "../features/users/userSlice";
+import communityReducer from "../features/community/communitySlice";
 import organizerReducer from "../features/organizer/organizerSlice";
 import competitionsReducer from "../features/competitions/competitionsSlice";
 import plansReducer from "../features/plans/plansSlice";
@@ -18,6 +19,7 @@ const presistConfig = {
 const rootReducer = combineReducers({
   auth: authReducer,
   user: userReducer,
+  community: communityReducer,
   organizer: organizerReducer,
   competitions: competitionsReducer,
   plans: plansReducer,

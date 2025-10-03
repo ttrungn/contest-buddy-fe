@@ -476,6 +476,7 @@ const userSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
+      // User profile
       .addCase(fetchCustomerProfile.pending, (state) => {
         state.isLoading = true;
         state.error = null;
