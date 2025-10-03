@@ -17,6 +17,8 @@ import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { Flag } from "lucide-react";
 import { useChat } from "@/contexts/ChatContext";
+import { api } from "@/services/constant/axiosInstance";
+import { COMPETITION_PARTICIPANTS_CHECK_ENDPOINT } from "@/services/constant/apiConfig";
 
 export default function Competition() {
   const { id } = useParams();
@@ -31,18 +33,51 @@ export default function Competition() {
   const { toast } = useToast();
   const { openChatWithUser } = useChat();
   const [isInterested, setIsInterested] = useState(false);
+  
+  // Real registration status from API
+  const [isUserRegistered, setIsUserRegistered] = useState(false);
+  const [isCheckingRegistration, setIsCheckingRegistration] = useState(false);
+  const [userRegistration, setUserRegistration] = useState<any>(null);
 
   // Mock current user (in real app, this would come from auth context)
   const currentUser = mockUsers[0];
 
-  // Mock user registrations (in real app, this would come from API)
-  const userRegistrations = [
-    { competitionId: "2", teamId: "1", registeredAt: new Date("2024-01-15") }, // User đã đăng ký cuộc thi ACM ICPC
-  ];
+  // API function to check user registration status
+  const checkUserRegistration = async () => {
+    if (!id) return;
+    
+    setIsCheckingRegistration(true);
+    try {
+      const response = await api.get(COMPETITION_PARTICIPANTS_CHECK_ENDPOINT(id));
+      
+      // Handle the actual response structure: { success, isRegistered, registrationType, data }
+      if (response && response.success) {
+        const isRegistered = response.isRegistered;
+        setIsUserRegistered(isRegistered || false);
+        
+        if (isRegistered && response.data) {
+          setUserRegistration({
+            ...response.data,
+            registrationType: response.registrationType,
+            registeredAt: response.data.registrationDate
+          });
+        }
+      }
+    } catch (error: any) {
+      console.error("Error checking registration status:", error);
+      // Don't show error toast for this check as it's not critical
+      setIsUserRegistered(false);
+    } finally {
+      setIsCheckingRegistration(false);
+    }
+  };
 
-  // Check if current user is already registered for this competition
-  const isUserRegistered = userRegistrations.some(reg => reg.competitionId === id);
-  const userRegistration = userRegistrations.find(reg => reg.competitionId === id);
+  // Check registration status when component mounts or competition ID changes
+  useEffect(() => {
+    if (id) {
+      checkUserRegistration();
+    }
+  }, [id]);
 
   // Check if user is in any team
   const userTeams = mockTeams.filter(team => team.members.some(m => m.userId === currentUser.id));
@@ -332,8 +367,7 @@ export default function Competition() {
                   <div className="space-y-3">
                     {isUserRegistered ? (
                       <Button
-                        className="w-full"
-                        variant="secondary"
+                        className="w-full bg-green-600 hover:bg-green-700 text-white"
                         size="lg"
                         disabled
                       >
@@ -341,14 +375,43 @@ export default function Competition() {
                         Đã đăng ký
                       </Button>
                     ) : (norm?.status === "registration_open" || norm?.status === "published") && daysLeft >= 0 ? (
-                      hasTeam ? (
+                      !norm?.isRegisteredAsTeam ? (
                         <Button
                           className="w-full"
                           size="lg"
                           onClick={() => setIsRegistrationModalOpen(true)}
+                          disabled={isCheckingRegistration}
                         >
-                          <CheckCircle className="h-4 w-4 mr-2" />
-                          Đăng ký tham gia
+                          {isCheckingRegistration ? (
+                            <>
+                              <div className="h-4 w-4 mr-2 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                              Đang kiểm tra...
+                            </>
+                          ) : (
+                            <>
+                              <CheckCircle className="h-4 w-4 mr-2" />
+                              Đăng ký tham gia
+                            </>
+                          )}
+                        </Button>
+                      ) : hasTeam ? (
+                        <Button
+                          className="w-full"
+                          size="lg"
+                          onClick={() => setIsRegistrationModalOpen(true)}
+                          disabled={isCheckingRegistration}
+                        >
+                          {isCheckingRegistration ? (
+                            <>
+                              <div className="h-4 w-4 mr-2 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                              Đang kiểm tra...
+                            </>
+                          ) : (
+                            <>
+                              <CheckCircle className="h-4 w-4 mr-2" />
+                              Đăng ký tham gia
+                            </>
+                          )}
                         </Button>
                       ) : (
                         <Button
@@ -415,9 +478,6 @@ export default function Competition() {
                         <div className="text-sm text-green-700">
                           Ngày đăng ký: {formatDateShort(userRegistration.registeredAt)}
                         </div>
-                        <div className="text-sm text-green-700">
-                          Mã đăng ký: #{userRegistration.teamId}
-                        </div>
                       </div>
                     </>
                   )}
@@ -449,9 +509,15 @@ export default function Competition() {
       {norm && !isUserRegistered && (
         <RegistrationModal
           isOpen={isRegistrationModalOpen}
-          onClose={() => setIsRegistrationModalOpen(false)}
+          onClose={() => {
+            setIsRegistrationModalOpen(false);
+            // Refresh registration status after modal closes
+            checkUserRegistration();
+          }}
           competitionId={norm.id}
           competitionTitle={norm.title}
+          isRegisteredAsTeam={norm.isRegisteredAsTeam || false}
+          maxParticipantsPerTeam={norm.maxParticipantsPerTeam}
         />
       )}
 

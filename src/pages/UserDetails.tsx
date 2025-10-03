@@ -32,30 +32,113 @@ import { User } from "@/types";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useChat } from "@/contexts/ChatContext";
+import { api } from "@/services/constant/axiosInstance";
+import { CUSTOMER_DETAIL_ENDPOINT } from "@/services/constant/apiConfig";
+
+interface CustomerSkill {
+  skill_name: string;
+  category: string;
+  level: string;
+  experience_years: number;
+}
+
+interface CustomerAchievement {
+  id: string;
+  competition_name: string;
+  position: number;
+  award: string;
+  achieved_at: string;
+  category: string;
+  description: string;
+}
+
+interface CustomerProject {
+  id: string;
+  title: string;
+  description: string;
+  category: string;
+  tags: string[];
+  image_url: string | null;
+  project_url: string | null;
+  github_url: string | null;
+  created_at: string;
+}
+
+interface CustomerProfile {
+  userId: string;
+  username: string;
+  full_name: string;
+  email: string;
+  avatar_url: string;
+  bio: string;
+  school: string;
+  city: string;
+  region: string;
+  country: string;
+  study_field: string;
+  join_date: string;
+  rating: number;
+  is_verified: boolean;
+  skills: CustomerSkill[];
+  achievements: CustomerAchievement[];
+  projects: CustomerProject[];
+  social_links: {
+    github: string;
+    linkedin: string;
+    personal: string;
+  };
+}
+
+interface ApiResponse {
+  success: boolean;
+  profile: CustomerProfile;
+}
 
 export default function UserDetails() {
   const { id } = useParams<{ id: string }>();
-  const [user, setUser] = useState<User | null>(null);
+  const [userProfile, setUserProfile] = useState<CustomerProfile | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [isInviting, setIsInviting] = useState(false);
   const [isMessaging, setIsMessaging] = useState(false);
   const { toast } = useToast();
   const { openChatWithUser } = useChat();
 
+  // Fetch user profile from API
   useEffect(() => {
-    if (id) {
-      const foundUser = mockUsers.find((u) => u.id === id);
-      setUser(foundUser || null);
-    }
+    const fetchUserProfile = async () => {
+      if (!id) return;
+      
+      setIsLoading(true);
+      setError(null);
+      
+      try {
+        const response = await api.get(CUSTOMER_DETAIL_ENDPOINT(id));
+        
+        if (response.success && response.profile) {
+          setUserProfile(response.profile);
+        } else {
+          setError("Không thể tải thông tin người dùng");
+        }
+      } catch (err) {
+        console.error("Error fetching user profile:", err);
+        setError("Có lỗi xảy ra khi tải thông tin người dùng");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchUserProfile();
   }, [id]);
 
-  if (!user) {
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-background">
         <div className="container py-8">
           <div className="text-center py-12">
-            <h1 className="text-2xl font-bold mb-4">Không tìm thấy thông tin</h1>
-            <p className="text-muted-foreground mb-6">
-              Thí sinh này không tồn tại hoặc đã bị xóa.
+            <h1 className="text-2xl font-bold mb-4">Đang tải...</h1>
+            <p className="text-muted-foreground">
+              Đang tải thông tin người dùng.
             </p>
           </div>
         </div>
@@ -63,7 +146,23 @@ export default function UserDetails() {
     );
   }
 
-  const formatJoinDate = (date: Date) => {
+  if (error || !userProfile) {
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="container py-8">
+          <div className="text-center py-12">
+            <h1 className="text-2xl font-bold mb-4">Không tìm thấy thông tin</h1>
+            <p className="text-muted-foreground mb-6">
+              {error || "Thí sinh này không tồn tại hoặc đã bị xóa."}
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const formatJoinDate = (dateString: string) => {
+    const date = new Date(dateString);
     return new Intl.DateTimeFormat("vi-VN", {
       day: "numeric",
       month: "long",
@@ -110,7 +209,7 @@ export default function UserDetails() {
   };
 
   const handleInvite = () => {
-    if (!user) return;
+    if (!userProfile) return;
     
     setIsInviting(true);
     
@@ -119,20 +218,20 @@ export default function UserDetails() {
       setIsInviting(false);
       toast({
         title: "Gửi lời mời thành công!",
-        description: `Đã gửi lời mời đến ${user.fullName}. Họ sẽ nhận được thông báo.`,
+        description: `Đã gửi lời mời đến ${userProfile.full_name}. Họ sẽ nhận được thông báo.`,
       });
     }, 1000);
   };
 
   const handleMessage = () => {
-    if (!user) return;
+    if (!userProfile) return;
     
     setIsMessaging(true);
     
     // Open chat with user
     setTimeout(() => {
       setIsMessaging(false);
-      openChatWithUser(user.id, user.fullName);
+      openChatWithUser(userProfile.userId, userProfile.full_name);
     }, 500);
   };
 
@@ -143,9 +242,9 @@ export default function UserDetails() {
         <div className="mb-8">
           <div className="flex items-start space-x-6">
             <Avatar className="h-24 w-24">
-              <AvatarImage src={user.avatar} alt={user.fullName} />
+              <AvatarImage src={userProfile.avatar_url} alt={userProfile.full_name} />
               <AvatarFallback className="text-2xl">
-                {user.fullName
+                {userProfile.full_name
                   .split(" ")
                   .map((n) => n[0])
                   .join("")}
@@ -154,8 +253,8 @@ export default function UserDetails() {
             
             <div className="flex-1">
               <div className="flex items-center space-x-3 mb-2">
-                <h1 className="text-3xl font-bold">{user.fullName}</h1>
-                {user.isVerified && (
+                <h1 className="text-3xl font-bold">{userProfile.full_name}</h1>
+                {userProfile.is_verified && (
                   <CheckCircle className="h-6 w-6 text-blue-500" />
                 )}
                 <div className="flex items-center">
@@ -164,38 +263,38 @@ export default function UserDetails() {
                       key={i}
                       className={cn(
                         "h-5 w-5",
-                        i < Math.floor(user.rating)
+                        i < Math.floor(userProfile.rating)
                           ? "fill-yellow-400 text-yellow-400"
                           : "text-gray-300",
                       )}
                     />
                   ))}
                   <span className="text-lg text-muted-foreground ml-2">
-                    ({user.rating})
+                    ({userProfile.rating})
                   </span>
                 </div>
               </div>
               
               <p className="text-xl text-muted-foreground mb-3">
-                @{user.username}
+                @{userProfile.username}
               </p>
               
               <div className="flex items-center space-x-6 text-muted-foreground mb-4">
                 <div className="flex items-center">
                   <School className="h-5 w-5 mr-2" />
-                  {user.school}
+                  {userProfile.school}
                 </div>
                 <div className="flex items-center">
                   <MapPin className="h-5 w-5 mr-2" />
-                  {user.location.city}, {user.location.region}
+                  {userProfile.city}, {userProfile.region}
                 </div>
                 <div className="flex items-center">
                   <Calendar className="h-5 w-5 mr-2" />
-                  Tham gia từ {formatJoinDate(user.joinDate)}
+                  Tham gia từ {formatJoinDate(userProfile.join_date)}
                 </div>
               </div>
               
-              <p className="text-lg mb-6">{user.bio}</p>
+              <p className="text-lg mb-6">{userProfile.bio || "Chưa có thông tin giới thiệu"}</p>
               
               <div className="flex space-x-3">
                 <Button
@@ -244,7 +343,7 @@ export default function UserDetails() {
                     <label className="text-sm font-medium text-muted-foreground">
                       Chuyên ngành
                     </label>
-                    <p className="text-lg">{user.studyField}</p>
+                    <p className="text-lg">{userProfile.study_field}</p>
                   </div>
                   <div>
                     <label className="text-sm font-medium text-muted-foreground">
@@ -252,7 +351,16 @@ export default function UserDetails() {
                     </label>
                     <p className="text-lg flex items-center">
                       <Mail className="h-4 w-4 mr-2" />
-                      {user.email}
+                      {userProfile.email}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">
+                      Username
+                    </label>
+                    <p className="text-lg flex items-center">
+                      <Mail className="h-4 w-4 mr-2" />
+                      @{userProfile.username}
                     </p>
                   </div>
                   <div>
@@ -261,7 +369,7 @@ export default function UserDetails() {
                     </label>
                     <p className="text-lg flex items-center">
                       <MapPin className="h-4 w-4 mr-2" />
-                      {user.location.city}, {user.location.region}, {user.location.country}
+                      {userProfile.city}, {userProfile.region}, {userProfile.country}
                     </p>
                   </div>
                   <div>
@@ -270,29 +378,27 @@ export default function UserDetails() {
                     </label>
                     <p className="text-lg flex items-center">
                       <Calendar className="h-4 w-4 mr-2" />
-                      {formatJoinDate(user.joinDate)}
+                      {formatJoinDate(userProfile.join_date)}
                     </p>
                   </div>
                 </CardContent>
               </Card>
 
-              {/* Sở thích */}
+              {/* Sở thích - sẽ hiển thị thông báo chưa có dữ liệu */}
               <Card>
                 <CardHeader>
                   <CardTitle>Quan tâm</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="flex flex-wrap gap-2">
-                    {user.interests.map((interest) => (
-                      <Badge key={interest} variant="secondary">
-                        {interest}
-                      </Badge>
-                    ))}
+                  <div className="text-center py-4">
+                    <p className="text-muted-foreground">
+                      Chưa có thông tin về sở thích
+                    </p>
                   </div>
                 </CardContent>
               </Card>
 
-              {/* Lịch sử cộng tác */}
+              {/* Lịch sử cộng tác - sẽ hiển thị thông báo chưa có dữ liệu */}
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center">
@@ -301,74 +407,42 @@ export default function UserDetails() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {user.collaborationHistory.length > 0 ? (
-                    <div className="space-y-3">
-                      {user.collaborationHistory.slice(0, 3).map((collab) => (
-                        <div key={collab.id} className="border-l-2 border-primary pl-3">
-                          <p className="font-medium">{collab.competitionTitle}</p>
-                          <p className="text-sm text-muted-foreground">
-                            Cùng {collab.partnerName}
-                          </p>
-                          <div className="flex items-center mt-1">
-                            {[...Array(5)].map((_, i) => (
-                              <Star
-                                key={i}
-                                className={cn(
-                                  "h-3 w-3",
-                                  i < collab.rating
-                                    ? "fill-yellow-400 text-yellow-400"
-                                    : "text-gray-300",
-                                )}
-                              />
-                            ))}
-                            <span className="text-xs text-muted-foreground ml-1">
-                              ({collab.rating})
-                            </span>
-                          </div>
-                        </div>
-                      ))}
-                      {user.collaborationHistory.length > 3 && (
-                        <p className="text-sm text-muted-foreground">
-                          +{user.collaborationHistory.length - 3} lần cộng tác khác
-                        </p>
-                      )}
-                    </div>
-                  ) : (
+                  <div className="text-center py-4">
                     <p className="text-muted-foreground">
                       Chưa có lịch sử cộng tác
                     </p>
-                  )}
+                  </div>
                 </CardContent>
               </Card>
             </div>
 
             {/* Social Links */}
-            {Object.values(user.socialLinks).some(link => link) && (
+            {Object.values(userProfile.social_links).some(link => link) && (
               <Card>
                 <CardHeader>
                   <CardTitle>Liên kết mạng xã hội</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="flex space-x-4">
-                    {user.socialLinks.github && (
+                    {userProfile.social_links.github && (
                       <Button variant="outline" asChild>
-                        <a href={user.socialLinks.github} target="_blank" rel="noopener noreferrer">
+                        <a href={userProfile.social_links.github} target="_blank" rel="noopener noreferrer">
                           <Github className="h-4 w-4 mr-2" />
                           GitHub
                         </a>
                       </Button>
                     )}
-                    {user.socialLinks.linkedin && (
+                    {userProfile.social_links.linkedin && (
                       <Button variant="outline" asChild>
-                        <a href={user.socialLinks.linkedin} target="_blank" rel="noopener noreferrer">
+                        <a href={userProfile.social_links.linkedin} target="_blank" rel="noopener noreferrer">
                           <Linkedin className="h-4 w-4 mr-2" />
                           LinkedIn
                         </a>
                       </Button>
                     )}
-                    {user.socialLinks.personal && (
+                    {userProfile.social_links.personal && (
                       <Button variant="outline" asChild>
-                        <a href={user.socialLinks.personal} target="_blank" rel="noopener noreferrer">
+                        <a href={userProfile.social_links.personal} target="_blank" rel="noopener noreferrer">
                           <Globe className="h-4 w-4 mr-2" />
                           Website
                         </a>
@@ -389,40 +463,34 @@ export default function UserDetails() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-6">
-                  {user.skills.map((skill) => (
-                    <div key={skill.name} className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <h4 className="font-medium">{skill.name}</h4>
-                          <p className="text-sm text-muted-foreground">
-                            {skill.experienceYears} năm kinh nghiệm
-                          </p>
-                        </div>
-                        <Badge className={getSkillLevelColor(skill.level)}>
-                          {skill.level}
-                        </Badge>
-                      </div>
-                      <Progress value={getSkillLevelProgress(skill.level)} className="h-2" />
-                      
-                      {skill.certifications && skill.certifications.length > 0 && (
-                        <div className="mt-3">
-                          <p className="text-sm font-medium mb-2">Chứng chỉ:</p>
-                          <div className="space-y-2">
-                            {skill.certifications.map((cert, index) => (
-                              <div key={index} className="flex items-center justify-between text-sm">
-                                <span>{cert.name} - {cert.issuer}</span>
-                                <span className="text-muted-foreground">
-                                  {formatDate(cert.date)}
-                                </span>
-                              </div>
-                            ))}
+                {userProfile.skills && userProfile.skills.length > 0 ? (
+                  <div className="space-y-6">
+                    {userProfile.skills.map((skill) => (
+                      <div key={skill.skill_name} className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <h4 className="font-medium">{skill.skill_name}</h4>
+                            <p className="text-sm text-muted-foreground">
+                              {skill.experience_years} năm kinh nghiệm • {skill.category}
+                            </p>
                           </div>
+                          <Badge className={getSkillLevelColor(skill.level)}>
+                            {skill.level}
+                          </Badge>
                         </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
+                        <Progress value={getSkillLevelProgress(skill.level)} className="h-2" />
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <Target className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                    <h3 className="text-lg font-semibold mb-2">Chưa có thông tin kỹ năng</h3>
+                    <p className="text-muted-foreground">
+                      Thí sinh này chưa cập nhật thông tin về kỹ năng chuyên môn.
+                    </p>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -436,13 +504,13 @@ export default function UserDetails() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                {user.achievements.length > 0 ? (
+                {userProfile.achievements && userProfile.achievements.length > 0 ? (
                   <div className="space-y-4">
-                    {user.achievements.map((achievement) => (
+                    {userProfile.achievements.map((achievement) => (
                       <div key={achievement.id} className="border rounded-lg p-4">
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
-                            <h4 className="font-medium text-lg">{achievement.competitionTitle}</h4>
+                            <h4 className="font-medium text-lg">{achievement.competition_name}</h4>
                             <p className="text-muted-foreground mb-2">{achievement.category}</p>
                             <div className="flex items-center space-x-4 text-sm">
                               <div className="flex items-center">
@@ -455,14 +523,8 @@ export default function UserDetails() {
                               </div>
                               <div className="flex items-center">
                                 <Calendar className="h-4 w-4 mr-1" />
-                                {formatDate(achievement.date)}
+                                {formatDate(new Date(achievement.achieved_at))}
                               </div>
-                              {achievement.teamSize && (
-                                <div className="flex items-center">
-                                  <Users className="h-4 w-4 mr-1" />
-                                  Đội {achievement.teamSize} người
-                                </div>
-                              )}
                             </div>
                             {achievement.description && (
                               <p className="text-sm text-muted-foreground mt-2">
@@ -470,14 +532,6 @@ export default function UserDetails() {
                               </p>
                             )}
                           </div>
-                          {achievement.certificate && (
-                            <Button variant="outline" size="sm" asChild>
-                              <a href={achievement.certificate} target="_blank" rel="noopener noreferrer">
-                                <ExternalLink className="h-4 w-4 mr-1" />
-                                Chứng chỉ
-                              </a>
-                            </Button>
-                          )}
                         </div>
                       </div>
                     ))}
@@ -501,60 +555,71 @@ export default function UserDetails() {
                 <CardTitle>Portfolio</CardTitle>
               </CardHeader>
               <CardContent>
-                {user.portfolio.length > 0 ? (
+                {userProfile.projects && userProfile.projects.length > 0 ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {user.portfolio.map((item) => (
-                      <div key={item.id} className="border rounded-lg overflow-hidden">
-                        {item.imageUrl && (
-                          <div className="aspect-video bg-muted">
-                            <img
-                              src={item.imageUrl}
-                              alt={item.title}
-                              className="w-full h-full object-cover"
-                            />
-                          </div>
-                        )}
-                        <div className="p-4">
-                          <h4 className="font-medium mb-2">{item.title}</h4>
-                          <p className="text-sm text-muted-foreground mb-3">
-                            {item.description}
-                          </p>
-                          <div className="flex flex-wrap gap-1 mb-3">
-                            {item.tags.map((tag) => (
-                              <Badge key={tag} variant="outline" className="text-xs">
-                                {tag}
-                              </Badge>
-                            ))}
-                          </div>
-                          <div className="flex items-center justify-between text-sm text-muted-foreground">
-                            <span>{formatDate(item.date)}</span>
-                            {item.featured && (
-                              <Badge variant="secondary" className="text-xs">
-                                Nổi bật
-                              </Badge>
-                            )}
-                          </div>
-                          <div className="flex space-x-2 mt-3">
-                            {item.projectUrl && (
-                              <Button variant="outline" size="sm" asChild>
-                                <a href={item.projectUrl} target="_blank" rel="noopener noreferrer">
-                                  <ExternalLink className="h-4 w-4 mr-1" />
-                                  Xem dự án
-                                </a>
-                              </Button>
-                            )}
-                            {item.githubUrl && (
-                              <Button variant="outline" size="sm" asChild>
-                                <a href={item.githubUrl} target="_blank" rel="noopener noreferrer">
-                                  <Github className="h-4 w-4 mr-1" />
-                                  GitHub
-                                </a>
-                              </Button>
-                            )}
+                    {userProfile.projects.map((item) => {
+                      // Parse tags if they're in JSON format
+                      let parsedTags: string[] = [];
+                      try {
+                        if (item.tags && item.tags.length > 0) {
+                          parsedTags = JSON.parse(item.tags[0]) || [];
+                        }
+                      } catch (e) {
+                        // If parsing fails, use tags as is
+                        parsedTags = item.tags || [];
+                      }
+
+                      return (
+                        <div key={item.id} className="border rounded-lg overflow-hidden">
+                          {item.image_url && (
+                            <div className="aspect-video bg-muted">
+                              <img
+                                src={item.image_url}
+                                alt={item.title}
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                          )}
+                          <div className="p-4">
+                            <h4 className="font-medium mb-2">{item.title}</h4>
+                            <p className="text-sm text-muted-foreground mb-3">
+                              {item.description}
+                            </p>
+                            <p className="text-sm text-muted-foreground mb-3">
+                              <strong>Danh mục:</strong> {item.category}
+                            </p>
+                            <div className="flex flex-wrap gap-1 mb-3">
+                              {parsedTags.map((tag, index) => (
+                                <Badge key={index} variant="outline" className="text-xs">
+                                  {tag}
+                                </Badge>
+                              ))}
+                            </div>
+                            <div className="flex items-center justify-between text-sm text-muted-foreground mb-3">
+                              <span>{formatDate(new Date(item.created_at))}</span>
+                            </div>
+                            <div className="flex space-x-2">
+                              {item.project_url && (
+                                <Button variant="outline" size="sm" asChild>
+                                  <a href={item.project_url} target="_blank" rel="noopener noreferrer">
+                                    <ExternalLink className="h-4 w-4 mr-1" />
+                                    Xem dự án
+                                  </a>
+                                </Button>
+                              )}
+                              {item.github_url && (
+                                <Button variant="outline" size="sm" asChild>
+                                  <a href={item.github_url} target="_blank" rel="noopener noreferrer">
+                                    <Github className="h-4 w-4 mr-1" />
+                                    GitHub
+                                  </a>
+                                </Button>
+                              )}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 ) : (
                   <div className="text-center py-8">

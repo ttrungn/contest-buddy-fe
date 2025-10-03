@@ -206,6 +206,8 @@ export const fetchCompetitionDetail = createAsyncThunk<
       rules: d.rules,
       tags: d.competitionTags || [],
       requiredSkills: d.competitionRequiredSkills || [],
+      isRegisteredAsTeam: d.isRegisteredAsTeam,
+      maxParticipantsPerTeam: d.maxParticipantsPerTeam,
       organizer: {
         email: d.organizer?.email,
         website: d.organizer?.website,

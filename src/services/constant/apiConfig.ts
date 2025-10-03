@@ -18,6 +18,7 @@ export const CHANGE_PASSWORD_ENDPOINT = `${BASE_URL}/api/auth/change-password`;
 // Customer profile endpoints
 export const CUSTOMER_PROFILES_ENDPOINT = `${BASE_URL}/api/customers`;
 export const CUSTOMER_PROFILE_ENDPOINT = `${BASE_URL}/api/customer/profile`;
+export const CUSTOMER_DETAIL_ENDPOINT = (userId: string) => `${BASE_URL}/api/customer/${userId}`;
 export const CUSTOMER_AVATAR_ENDPOINT = `${BASE_URL}/api/customer/avatar`;
 
 // User skills endpoints
@@ -47,6 +48,18 @@ export const COMPETITION_DETAIL_ENDPOINT = (id: string) =>
   `${BASE_URL}/api/competitions/${id}`;
 export const COMPETITION_PARTICIPANTS_ENDPOINT = (id: string) =>
   `${BASE_URL}/api/competitions/${id}/participants`;
+export const COMPETITION_REGISTER_ENDPOINT = (id: string) =>
+  `${BASE_URL}/api/competitions/${id}/register`;
+export const COMPETITION_PARTICIPANTS_CHECK_ENDPOINT = (id: string) =>
+  `${BASE_URL}/api/competitions/${id}/participants/check`;
+
+// User endpoints
+export const USER_TEAMS_ENDPOINT = `${BASE_URL}/api/user/teams`;
+export const USER_PARTICIPATED_COMPETITIONS_ENDPOINT = `${BASE_URL}/api/user/participated-competitions`;
+
+// Team endpoints
+export const TEAM_MEMBERS_ENDPOINT = (id: string) =>
+  `${BASE_URL}/api/teams/${id}/members`;
 
 // Plans
 export const PLANS_ENDPOINT = `${BASE_URL}/api/plans`;

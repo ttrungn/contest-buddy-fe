@@ -99,6 +99,8 @@ export interface CompetitionDetail extends CompetitionSummary {
   rules?: string;
   tags?: string[];
   requiredSkills?: CompetitionRequiredSkill[];
+  isRegisteredAsTeam?: boolean;
+  maxParticipantsPerTeam?: number;
   organizer?: {
     email?: string;
     website?: string;
