@@ -39,6 +39,24 @@ export default function CompetitionCard({
   };
 
   const getStatusBadge = () => {
+    // Check if registration deadline has passed
+    const today = new Date();
+    const deadline = new Date(competition.registrationDeadline);
+    const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const deadlineStart = new Date(deadline.getFullYear(), deadline.getMonth(), deadline.getDate());
+    const diffTime = deadlineStart.getTime() - todayStart.getTime();
+    const daysLeft = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    const isRegistrationExpired = daysLeft < 0;
+
+    // If registration is expired, show expired status regardless of API status
+    if (isRegistrationExpired && competition.status === "registration-open") {
+      return (
+        <Badge className="bg-red-100 text-red-700 border-red-200">
+          Đã hết hạn đăng ký
+        </Badge>
+      );
+    }
+
     switch (competition.status) {
       case "registration-open":
         return (

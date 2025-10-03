@@ -46,3 +46,6 @@ export const COMPETITION_DETAIL_ENDPOINT = (id: string) =>
   `${BASE_URL}/api/competitions/${id}`;
 export const COMPETITION_PARTICIPANTS_ENDPOINT = (id: string) =>
   `${BASE_URL}/api/competitions/${id}/participants`;
+
+// Plans
+export const PLANS_ENDPOINT = `${BASE_URL}/api/plans`;

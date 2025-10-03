@@ -44,6 +44,8 @@ export interface CreateCompetitionRequest {
   location: string;
   prize_pool_text?: string;
   max_participants?: number;
+  isRegisteredAsTeam?: boolean;
+  maxParticipantsPerTeam?: number;
   level: CompetitionLevel;
   image_url?: string;
   website?: string;

@@ -80,6 +80,20 @@ export default function Competition() {
 
   const getStatusBadge = () => {
     if (!norm) return null;
+
+    // Check if registration deadline has passed
+    const daysLeft = getDaysUntilDeadline();
+    const isRegistrationExpired = daysLeft < 0;
+
+    // If registration is expired, show expired status regardless of API status
+    if (isRegistrationExpired && (norm.status === "registration_open" || norm.status === "published")) {
+      return (
+        <Badge className="bg-red-100 text-red-700 border-red-200">
+          Đã hết hạn đăng ký
+        </Badge>
+      );
+    }
+
     switch (norm.status as any) {
       case "registration_open":
       case "published":
@@ -326,7 +340,7 @@ export default function Competition() {
                         <CheckCircle className="h-4 w-4 mr-2" />
                         Đã đăng ký
                       </Button>
-                    ) : (norm?.status === "registration_open" || norm?.status === "published") && daysLeft > 0 ? (
+                    ) : (norm?.status === "registration_open" || norm?.status === "published") && daysLeft >= 0 ? (
                       hasTeam ? (
                         <Button
                           className="w-full"
