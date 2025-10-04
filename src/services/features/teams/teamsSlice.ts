@@ -28,6 +28,7 @@ import {
   TEAM_INVITATION_ACCEPT_ENDPOINT,
   TEAM_INVITATION_REJECT_ENDPOINT,
   TEAM_INVITATION_CANCEL_ENDPOINT,
+  TEAM_LEAVE_ENDPOINT,
   TEAM_MEMBER_ROLE_ENDPOINT,
   TEAM_MEMBER_DELETE_ENDPOINT
 } from '../../constant/apiConfig';
@@ -192,6 +193,18 @@ export const deleteTeam = createAsyncThunk(
       return response.data;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to delete team');
+    }
+  }
+);
+
+export const leaveTeam = createAsyncThunk(
+  'teams/leaveTeam',
+  async ({ teamId, memberId }: { teamId: string; memberId: string }, { rejectWithValue }) => {
+    try {
+      const response = await axiosInstance.delete(TEAM_LEAVE_ENDPOINT(teamId, memberId));
+      return response.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to leave team');
     }
   }
 );
@@ -439,6 +452,28 @@ const teamsSlice = createSlice({
         state.teamMembers = [];
       })
       .addCase(deleteTeam.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload as string;
+      });
+
+    // Leave Team
+    builder
+      .addCase(leaveTeam.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(leaveTeam.fulfilled, (state, action) => {
+        state.isLoading = false;
+        // Remove the team from user's teams list
+        const teamId = action.meta.arg.teamId;
+        state.teams = state.teams.filter(team => team.id !== teamId);
+        if (state.currentTeam?.id === teamId) {
+          state.currentTeam = null;
+          state.teamMembers = [];
+        }
+        state.error = null;
+      })
+      .addCase(leaveTeam.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload as string;
       });
