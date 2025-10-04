@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import {
   TrendingUp,
@@ -17,12 +17,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import CompetitionCard from "@/components/CompetitionCard";
 import SearchFilters from "@/components/SearchFilters";
-import { competitionCategories } from "@/lib/mockData";
-import { SearchFilters as SearchFiltersType, Competition } from "@/types";
+import { CompetitionFilters, Competition } from "@/types";
 import { useAppDispatch, useAppSelector } from "@/services/store/store";
 import { fetchCompetitions, fetchFeaturedCompetitions } from "@/services/features/competitions/competitionsSlice";
 
-// Debounce function
+// Debounce utility function for API calls
 const debounce = (func: Function, delay: number) => {
   let timeoutId: NodeJS.Timeout;
   return (...args: any[]) => {
@@ -32,77 +31,53 @@ const debounce = (func: Function, delay: number) => {
 };
 
 export default function Index() {
-  const [filters, setFilters] = useState<SearchFiltersType>({});
-  const [searchQuery, setSearchQuery] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
   const dispatch = useAppDispatch();
-  const { list, featured, isLoading } = useAppSelector((s) => s.competitions);
+  const { list, featured, isLoading, pagination } = useAppSelector((s) => s.competitions);
   const { isAuthenticated } = useAppSelector((s) => s.auth);
 
-  // Debounced search function
-  const debouncedSearch = useCallback(
-    debounce((searchTerm: string) => {
-      dispatch(fetchCompetitions({ 
-        page: 1, 
-        limit: 30, 
-        search: searchTerm,
-        ...buildFilterParams(filters)
-      }));
-      setCurrentPage(1);
-    }, 500),
-    [dispatch, filters]
-  );
+  // Simple filter state (no URL synchronization)
+  const [filters, setFilters] = useState<CompetitionFilters>({});
+  const [searchQuery, setSearchQuery] = useState("");
 
-  // Build filter parameters for API
-  const buildFilterParams = (filterState: SearchFiltersType) => {
-    const params: any = {};
-    
-    if (filterState.category?.length) {
-      params.category = filterState.category[0]; // API supports single category
-    }
-    if (filterState.status?.length) {
-      params.status = filterState.status[0]; // API supports single status
-    }
-    if (filterState.level?.length) {
-      params.level = filterState.level[0]; // API supports single level
-    }
-    if (filterState.location) {
-      params.location = filterState.location;
-    }
-    
-    return params;
-  };
+  // Debounced API call function
+  const debouncedFetchCompetitions = useCallback(
+    debounce((filterParams: CompetitionFilters) => {
+      dispatch(fetchCompetitions({
+        page: 1,
+        limit: 30,
+        ...filterParams,
+      }));
+    }, 500),
+    [dispatch]
+  );
 
   // Initial load
   useEffect(() => {
-    dispatch(fetchCompetitions({ page: 1, limit: 30 }));
-    dispatch(fetchFeaturedCompetitions({ page: 1, limit: 12 }));
-  }, [dispatch]);
-
-  // Handle search query changes
-  useEffect(() => {
-    if (searchQuery) {
-      debouncedSearch(searchQuery);
-    } else {
-      dispatch(fetchCompetitions({ 
-        page: 1, 
-        limit: 30,
-        ...buildFilterParams(filters)
-      }));
-      setCurrentPage(1);
-    }
-  }, [searchQuery, debouncedSearch, dispatch, filters]);
-
-  // Handle filter changes
-  useEffect(() => {
-    dispatch(fetchCompetitions({ 
-      page: 1, 
+    // Load competitions with initial filters
+    dispatch(fetchCompetitions({
+      page: 1,
       limit: 30,
-      search: searchQuery || undefined,
-      ...buildFilterParams(filters)
+      ...filters,
     }));
-    setCurrentPage(1);
-  }, [filters, dispatch, searchQuery]);
+    
+    // Load featured competitions
+    dispatch(fetchFeaturedCompetitions({ page: 1, limit: 12 }));
+  }, [dispatch, filters.category, filters.status, filters.level, filters.start_date, filters.end_date, filters.location, filters.isOnline, filters.prizePool]);
+
+  const handleFiltersChange = (newFilters: CompetitionFilters) => {
+    setFilters(newFilters);
+    // For search queries, use debounced API call
+    if (newFilters.search !== filters.search) {
+      debouncedFetchCompetitions(newFilters);
+    } else {
+      // For other filters, call immediately
+      dispatch(fetchCompetitions({
+        page: 1,
+        limit: 12,
+        ...newFilters,
+      }));
+    }
+  };
 
   // Map API items (summary) to UI Competition card shape with safe defaults
   const mapToCard = (c: any) => ({
@@ -124,14 +99,14 @@ export default function Index() {
     status: (c.status as any) || "upcoming",
     imageUrl: c.image_url || c.imageUrl,
   });
-  const cardList = (list || []).map(mapToCard);
-  const cardFeatured = (featured || []).map(mapToCard);
 
-  // Server-side filtering - no need for client-side filtering
-  const filteredCompetitions = cardList as any[];
-  const featuredCompetitions = cardFeatured as any[];
-  const upcomingCompetitions = cardList.filter((comp: any) => comp.status === "registration_open") as any[];
-  const ongoingCompetitions = cardList.filter((comp: any) => comp.status === "in_progress") as any[];
+  // Use API data directly (no client-side filtering)
+  const competitions = (list || []).map(mapToCard);
+  const featuredCompetitions = (featured || []).map(mapToCard);
+  
+  // Filter featured and status-based competitions from API data
+  const upcomingCompetitions = competitions.filter((comp: any) => comp.status === "registration_open");
+  const ongoingCompetitions = competitions.filter((comp: any) => comp.status === "in_progress");
 
   const stats = [
     {
@@ -237,7 +212,7 @@ export default function Index() {
                 </TabsList>
 
                 <div className="hidden lg:flex items-center space-x-2 text-sm text-muted-foreground">
-                  <span>Hiển thị {filteredCompetitions.length} cuộc thi</span>
+                  <span>Hiển thị {competitions.length} cuộc thi</span>
                 </div>
               </div>
 
@@ -255,17 +230,23 @@ export default function Index() {
                     />
                   </div>
                   <div className="text-sm text-muted-foreground">
-                    {isLoading ? "Đang tải..." : `${filteredCompetitions.length} cuộc thi`}
+                    {isLoading ? "Đang tải..." : `${competitions.length} cuộc thi`}
                   </div>
                 </div>
 
                 <SearchFilters
                   filters={filters}
-                  onFiltersChange={setFilters}
-                  onSearch={setSearchQuery}
+                  onFiltersChange={handleFiltersChange}
                 />
 
-                {filteredCompetitions.length === 0 ? (
+                {isLoading ? (
+                  <div className="text-center py-12">
+                    <div className="flex items-center justify-center space-x-2">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                      <span>Đang tải danh sách cuộc thi...</span>
+                    </div>
+                  </div>
+                ) : competitions.length === 0 ? (
                   <div className="text-center py-12">
                     <div className="text-6xl mb-4">🔍</div>
                     <h3 className="text-lg font-semibold mb-2">
@@ -276,8 +257,10 @@ export default function Index() {
                     </p>
                     <Button
                       onClick={() => {
-                        setFilters({});
+                        const clearedFilters = {};
+                        setFilters(clearedFilters);
                         setSearchQuery("");
+                        handleFiltersChange(clearedFilters);
                       }}
                     >
                       Xóa bộ lọc
@@ -285,7 +268,7 @@ export default function Index() {
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                    {filteredCompetitions.map((competition) => (
+                    {competitions.map((competition) => (
                       <CompetitionCard
                         key={competition.id}
                         competition={competition}
@@ -296,15 +279,24 @@ export default function Index() {
               </TabsContent>
 
               <TabsContent value="featured" className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                  {featuredCompetitions.map((competition) => (
-                    <CompetitionCard
-                      key={competition.id}
-                      competition={competition}
-                      variant="featured"
-                    />
-                  ))}
-                </div>
+                {isLoading ? (
+                  <div className="text-center py-12">
+                    <div className="flex items-center justify-center space-x-2">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                      <span>Đang tải cuộc thi nổi bật...</span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                    {featuredCompetitions.map((competition) => (
+                      <CompetitionCard
+                        key={competition.id}
+                        competition={competition}
+                        variant="featured"
+                      />
+                    ))}
+                  </div>
+                )}
               </TabsContent>
 
               <TabsContent value="registration" className="space-y-6">

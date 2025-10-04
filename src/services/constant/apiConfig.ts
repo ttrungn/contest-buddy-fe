@@ -41,6 +41,7 @@ export const ORGANIZER_COMPETITIONS_ENDPOINT = `${BASE_URL}/api/organizer/compet
 // Competition endpoints
 export const COMPETITIONS_ENDPOINT = `${BASE_URL}/api/competitions`;
 export const COMPETITIONS_FEATURED_ENDPOINT = `${BASE_URL}/api/competitions/featured`;
+export const COMPETITIONS_CONSTANTS_ENDPOINT = `${BASE_URL}/api/competitions/constants`;
 export const COMPETITIONS_BY_CATEGORY_ENDPOINT = (category: string) =>
   `${BASE_URL}/api/competitions/category/${category}`;
 export const COMPETITIONS_BY_STATUS_ENDPOINT = (status: string) =>

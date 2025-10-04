@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Search,
   Filter,
@@ -6,7 +6,9 @@ import {
   CalendarDays,
   MapPin,
   Trophy,
-  Users,
+  RotateCcw,
+  Tag,
+  Target,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,352 +23,400 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { SearchFilters as SearchFiltersType } from "@/types";
-import { competitionCategories } from "@/lib/mockData";
+import { CompetitionFilters, CompetitionConstants } from "@/types";
+import { COMPETITIONS_CONSTANTS_ENDPOINT } from "@/services/constant/apiConfig";
+
+// Debounce utility function
+const debounce = (func: Function, delay: number) => {
+  let timeoutId: NodeJS.Timeout;
+  return (...args: any[]) => {
+    clearTimeout(timeoutId);
+    timeoutId = setTimeout(() => func.apply(null, args), delay);
+  };
+};
 
 interface SearchFiltersProps {
-  filters: SearchFiltersType;
-  onFiltersChange: (filters: SearchFiltersType) => void;
-  onSearch: (query: string) => void;
+  filters: CompetitionFilters;
+  onFiltersChange: (filters: CompetitionFilters) => void;
 }
 
 export default function SearchFilters({
   filters,
   onFiltersChange,
-  onSearch,
 }: SearchFiltersProps) {
-  const [isFiltersOpen, setIsFiltersOpen] = useState(false);
+  const [localFilters, setLocalFilters] = useState<CompetitionFilters>(filters);
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const [constants, setConstants] = useState<CompetitionConstants | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const handleCategoryChange = (category: string, checked: boolean) => {
-    const currentCategories = filters.category || [];
-    const newCategories = checked
-      ? [...currentCategories, category as any]
-      : currentCategories.filter((c) => c !== category);
+  // Fetch constants from API
+  useEffect(() => {
+    const fetchConstants = async () => {
+      try {
+        const response = await fetch(COMPETITIONS_CONSTANTS_ENDPOINT);
+        const data = await response.json();
+        if (data.status === "success") {
+          setConstants(data.data);
+        }
+      } catch (error) {
+        console.error("Failed to fetch competition constants:", error);
+        // Fallback to default constants if API fails
+        setConstants({
+          categories: {
+            "PROGRAMMING": "Lập trình",
+            "DESIGN": "Thiết kế",
+            "BUSINESS": "Kinh doanh",
+            "SCIENCE": "Khoa học",
+          },
+          levels: {
+            "BEGINNER": "Người mới bắt đầu",
+            "INTERMEDIATE": "Trung cấp",
+            "ADVANCED": "Nâng cao",
+            "ALL_LEVELS": "Mọi cấp độ",
+          },
+          statuses: {
+            "REGISTRATION_OPEN": "Đang mở đăng ký",
+            "IN_PROGRESS": "Đang diễn ra",
+            "COMPLETED": "Đã hoàn thành",
+          },
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-    onFiltersChange({
-      ...filters,
-      category: newCategories.length > 0 ? newCategories : undefined,
-    });
+    fetchConstants();
+  }, []);
+
+  // Sync local filters with parent filters when they change
+  useEffect(() => {
+    setLocalFilters(filters);
+  }, [filters]);
+
+  // Debounced search function
+  const debouncedSearch = useCallback(
+    debounce((searchValue: string) => {
+      const updatedFilters = { ...localFilters, search: searchValue };
+      onFiltersChange(updatedFilters);
+    }, 500),
+    [localFilters, onFiltersChange]
+  );
+
+  // Apply filters immediately for non-text inputs
+  const applyFilters = (newFilters: Partial<CompetitionFilters>) => {
+    const updatedFilters = { ...localFilters, ...newFilters };
+    setLocalFilters(updatedFilters);
+    onFiltersChange(updatedFilters);
   };
 
-  const handleLevelChange = (level: string, checked: boolean) => {
-    const currentLevels = filters.level || [];
-    const newLevels = checked
-      ? [...currentLevels, level as any]
-      : currentLevels.filter((l) => l !== level);
-
-    onFiltersChange({
-      ...filters,
-      level: newLevels.length > 0 ? newLevels : undefined,
-    });
+  // Apply text search with debouncing
+  const applyTextSearch = (newFilters: Partial<CompetitionFilters>) => {
+    const updatedFilters = { ...localFilters, ...newFilters };
+    setLocalFilters(updatedFilters);
+    if (newFilters.search !== undefined) {
+      debouncedSearch(newFilters.search);
+    }
   };
 
-  const handleStatusChange = (status: string, checked: boolean) => {
-    const currentStatuses = filters.status || [];
-    const newStatuses = checked
-      ? [...currentStatuses, status as any]
-      : currentStatuses.filter((s) => s !== status);
-
-    onFiltersChange({
-      ...filters,
-      status: newStatuses.length > 0 ? newStatuses : undefined,
-    });
+  // Clear all filters
+  const clearAllFilters = () => {
+    const clearedFilters: CompetitionFilters = {
+      search: "",
+      category: [],
+      status: [],
+      level: [],
+      start_date: "",
+      end_date: "",
+      location: "",
+      isOnline: undefined,
+      prizePool: undefined,
+    };
+    setLocalFilters(clearedFilters);
+    onFiltersChange(clearedFilters);
   };
 
-  const clearFilters = () => {
-    onFiltersChange({});
-    setSearchQuery("");
+  // Handle checkbox changes for multi-select filters
+  const handleMultiSelectChange = (
+    field: 'category' | 'status' | 'level',
+    value: string,
+    checked: boolean
+  ) => {
+    const currentValues = localFilters[field] || [];
+    const newValues = checked
+      ? [...currentValues, value]
+      : currentValues.filter((v) => v !== value);
+    
+    applyFilters({ [field]: newValues });
   };
 
+  // Remove individual filter
+  const removeFilter = (field: keyof CompetitionFilters, value?: string) => {
+    if (field === 'category' || field === 'status' || field === 'level') {
+      const currentValues = localFilters[field] || [];
+      const newValues = value ? currentValues.filter(v => v !== value) : [];
+      applyFilters({ [field]: newValues });
+    } else {
+      applyFilters({ [field]: undefined });
+    }
+  };
+
+  // Count active filters
   const getActiveFiltersCount = () => {
     let count = 0;
-    if (filters.category?.length) count++;
-    if (filters.level?.length) count++;
-    if (filters.status?.length) count++;
-    if (filters.location) count++;
-    if (filters.isOnline !== undefined) count++;
-    if (filters.prizePool) count++;
+    if (localFilters.category?.length) count++;
+    if (localFilters.status?.length) count++;
+    if (localFilters.level?.length) count++;
+    if (localFilters.location) count++;
+    if (localFilters.start_date) count++;
+    if (localFilters.end_date) count++;
+    if (localFilters.isOnline !== undefined) count++;
+    if (localFilters.prizePool !== undefined) count++;
     return count;
   };
 
-  const levels = [
-    { value: "beginner", label: "Người mới bắt đầu" },
-    { value: "intermediate", label: "Trung cấp" },
-    { value: "advanced", label: "Nâng cao" },
-    { value: "expert", label: "Chuyên gia" },
-  ];
-
-  const statuses = [
-    { value: "registration-open", label: "Đang mở đăng ký" },
-    { value: "upcoming", label: "Sắp diễn ra" },
-    { value: "ongoing", label: "Đang diễn ra" },
-    { value: "completed", label: "Đã kết thúc" },
-  ];
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        <div className="flex gap-4">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input placeholder="Đang tải..." disabled className="pl-10" />
+          </div>
+          <Button disabled>Đang tải...</Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
-      {/* Filters */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Popover open={isFiltersOpen} onOpenChange={setIsFiltersOpen}>
-            <PopoverTrigger asChild>
-              <Button variant="outline" className="gap-2">
-                <Filter className="h-4 w-4" />
-                Bộ lọc
-                {getActiveFiltersCount() > 0 && (
-                  <Badge variant="secondary" className="ml-1">
-                    {getActiveFiltersCount()}
-                  </Badge>
-                )}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-80" align="start">
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-semibold">Bộ lọc tìm kiếm</h3>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={clearFilters}
-                    className="text-xs"
-                  >
-                    Xóa tất cả
-                  </Button>
-                </div>
-
-                <Separator />
-
-                {/* Categories */}
-                <div>
-                  <Label className="text-sm font-medium mb-3 block">
-                    Lĩnh vực
-                  </Label>
-                  <div className="grid grid-cols-2 gap-2">
-                    {competitionCategories.map((category) => (
-                      <div
-                        key={category.name}
-                        className="flex items-center space-x-2"
-                      >
-                        <Checkbox
-                          id={`category-${category.name}`}
-                          checked={
-                            filters.category?.includes(category.name as any) ||
-                            false
-                          }
-                          onCheckedChange={(checked) =>
-                            handleCategoryChange(
-                              category.name,
-                              checked as boolean,
-                            )
-                          }
-                        />
-                        <Label
-                          htmlFor={`category-${category.name}`}
-                          className="text-sm flex items-center gap-1"
-                        >
-                          <span>{category.icon}</span>
-                          {category.label}
-                        </Label>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <Separator />
-
-                {/* Level */}
-                <div>
-                  <Label className="text-sm font-medium mb-3 block">
-                    Cấp độ
-                  </Label>
-                  <div className="space-y-2">
-                    {levels.map((level) => (
-                      <div
-                        key={level.value}
-                        className="flex items-center space-x-2"
-                      >
-                        <Checkbox
-                          id={`level-${level.value}`}
-                          checked={
-                            filters.level?.includes(level.value as any) || false
-                          }
-                          onCheckedChange={(checked) =>
-                            handleLevelChange(level.value, checked as boolean)
-                          }
-                        />
-                        <Label
-                          htmlFor={`level-${level.value}`}
-                          className="text-sm"
-                        >
-                          {level.label}
-                        </Label>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <Separator />
-
-                {/* Status */}
-                <div>
-                  <Label className="text-sm font-medium mb-3 block">
-                    Trạng thái
-                  </Label>
-                  <div className="space-y-2">
-                    {statuses.map((status) => (
-                      <div
-                        key={status.value}
-                        className="flex items-center space-x-2"
-                      >
-                        <Checkbox
-                          id={`status-${status.value}`}
-                          checked={
-                            filters.status?.includes(status.value as any) ||
-                            false
-                          }
-                          onCheckedChange={(checked) =>
-                            handleStatusChange(status.value, checked as boolean)
-                          }
-                        />
-                        <Label
-                          htmlFor={`status-${status.value}`}
-                          className="text-sm"
-                        >
-                          {status.label}
-                        </Label>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <Separator />
-
-                {/* Additional Filters */}
-                <div className="space-y-3">
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="online"
-                      checked={filters.isOnline || false}
-                      onCheckedChange={(checked) =>
-                        onFiltersChange({
-                          ...filters,
-                          isOnline: checked ? true : undefined,
-                        })
-                      }
-                    />
-                    <Label htmlFor="online" className="text-sm">
-                      Cuộc thi online
-                    </Label>
-                  </div>
-
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="prize"
-                      checked={filters.prizePool || false}
-                      onCheckedChange={(checked) =>
-                        onFiltersChange({
-                          ...filters,
-                          prizePool: checked ? true : undefined,
-                        })
-                      }
-                    />
-                    <Label htmlFor="prize" className="text-sm">
-                      Có giải thưởng
-                    </Label>
-                  </div>
-                </div>
-
-                {/* Location */}
-                <div>
-                  <Label
-                    htmlFor="location"
-                    className="text-sm font-medium mb-2 block"
-                  >
-                    Địa điểm
-                  </Label>
-                  <Input
-                    id="location"
-                    placeholder="Nhập thành phố, tỉnh..."
-                    value={filters.location || ""}
-                    onChange={(e) =>
-                      onFiltersChange({
-                        ...filters,
-                        location: e.target.value || undefined,
-                      })
-                    }
-                  />
-                </div>
-              </div>
-            </PopoverContent>
-          </Popover>
-
-          {/* Quick Filters */}
-          <div className="hidden md:flex items-center gap-2">
-            <Button
-              variant={
-                filters.status?.includes("registration-open")
-                  ? "default"
-                  : "outline"
-              }
-              size="sm"
-              onClick={() =>
-                onFiltersChange({
-                  ...filters,
-                  status: filters.status?.includes("registration-open")
-                    ? filters.status.filter((s) => s !== "registration-open")
-                    : ["registration-open"],
-                })
-              }
-            >
-              Đang mở đăng ký
-            </Button>
-            <Button
-              variant={filters.isOnline ? "default" : "outline"}
-              size="sm"
-              onClick={() =>
-                onFiltersChange({
-                  ...filters,
-                  isOnline: filters.isOnline ? undefined : true,
-                })
-              }
-            >
-              Online
-            </Button>
-            <Button
-              variant={filters.prizePool ? "default" : "outline"}
-              size="sm"
-              onClick={() =>
-                onFiltersChange({
-                  ...filters,
-                  prizePool: filters.prizePool ? undefined : true,
-                })
-              }
-            >
-              <Trophy className="h-3 w-3 mr-1" />
-              Có giải thưởng
-            </Button>
-          </div>
+      {/* Primary Search and Quick Filters */}
+      <div className="flex gap-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Tìm kiếm cuộc thi theo tên, mô tả, kỹ năng..."
+            value={localFilters.search || ""}
+            onChange={(e) => applyTextSearch({ search: e.target.value })}
+            className="pl-10"
+          />
         </div>
-
-        {/* Sort */}
-        <Select defaultValue="relevance">
+        
+        {/* Quick Status Filter */}
+        <Select
+          value={localFilters.status?.includes("REGISTRATION_OPEN") ? "open" : "all"}
+          onValueChange={(value) => {
+            if (value === "open") {
+              applyFilters({ status: ["REGISTRATION_OPEN"] });
+            } else {
+              applyFilters({ status: [] });
+            }
+          }}
+        >
           <SelectTrigger className="w-48">
-            <SelectValue placeholder="Sắp xếp theo" />
+            <SelectValue placeholder="Trạng thái" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="relevance">Liên quan nhất</SelectItem>
-            <SelectItem value="deadline">Hạn đăng ký</SelectItem>
-            <SelectItem value="start-date">Ngày bắt đầu</SelectItem>
-            <SelectItem value="participants">Số người tham gia</SelectItem>
-            <SelectItem value="newest">Mới nhất</SelectItem>
+            <SelectItem value="all">Tất cả trạng thái</SelectItem>
+            <SelectItem value="open">Đang mở đăng ký</SelectItem>
           </SelectContent>
         </Select>
+
+        <Button
+          variant="outline"
+          onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+          className="flex items-center space-x-2"
+        >
+          <Filter className="h-4 w-4" />
+          <span>Bộ lọc nâng cao</span>
+          {getActiveFiltersCount() > 0 && (
+            <Badge variant="secondary" className="ml-1">
+              {getActiveFiltersCount()}
+            </Badge>
+          )}
+        </Button>
+        
+        <Button
+          variant="outline"
+          onClick={clearAllFilters}
+          className="flex items-center space-x-2"
+        >
+          <RotateCcw className="h-4 w-4" />
+          <span>Xóa bộ lọc</span>
+        </Button>
       </div>
+
+      {/* Advanced Filters */}
+      <Collapsible open={showAdvancedFilters} onOpenChange={setShowAdvancedFilters}>
+        <CollapsibleContent className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center space-x-2">
+                <Filter className="h-5 w-5" />
+                <span>Bộ lọc nâng cao</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Categories */}
+              <div>
+                <h4 className="text-sm font-medium mb-3 flex items-center space-x-2">
+                  <Tag className="h-4 w-4" />
+                  <span>Danh mục cuộc thi</span>
+                </h4>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  {constants && Object.entries(constants.categories).map(([key, label]) => (
+                    <div key={key} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`category-${key}`}
+                        checked={localFilters.category?.includes(key) || false}
+                        onCheckedChange={(checked) =>
+                          handleMultiSelectChange('category', key, checked as boolean)
+                        }
+                      />
+                      <Label htmlFor={`category-${key}`} className="text-sm">
+                        {label}
+                      </Label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Levels */}
+              <div>
+                <h4 className="text-sm font-medium mb-3 flex items-center space-x-2">
+                  <Target className="h-4 w-4" />
+                  <span>Cấp độ</span>
+                </h4>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  {constants && Object.entries(constants.levels).map(([key, label]) => (
+                    <div key={key} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`level-${key}`}
+                        checked={localFilters.level?.includes(key) || false}
+                        onCheckedChange={(checked) =>
+                          handleMultiSelectChange('level', key, checked as boolean)
+                        }
+                      />
+                      <Label htmlFor={`level-${key}`} className="text-sm">
+                        {label}
+                      </Label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Status */}
+              <div>
+                <h4 className="text-sm font-medium mb-3 flex items-center space-x-2">
+                  <CalendarDays className="h-4 w-4" />
+                  <span>Trạng thái cuộc thi</span>
+                </h4>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  {constants && Object.entries(constants.statuses).map(([key, label]) => (
+                    <div key={key} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`status-${key}`}
+                        checked={localFilters.status?.includes(key) || false}
+                        onCheckedChange={(checked) =>
+                          handleMultiSelectChange('status', key, checked as boolean)
+                        }
+                      />
+                      <Label htmlFor={`status-${key}`} className="text-sm">
+                        {label}
+                      </Label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Date Range */}
+              <div>
+                <h4 className="text-sm font-medium mb-3 flex items-center space-x-2">
+                  <CalendarDays className="h-4 w-4" />
+                  <span>Thời gian thi</span>
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-medium mb-2 block">Từ ngày</label>
+                    <Input
+                      type="date"
+                      value={localFilters.start_date || ""}
+                      onChange={(e) => applyFilters({ start_date: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium mb-2 block">Đến ngày</label>
+                    <Input
+                      type="date"
+                      value={localFilters.end_date || ""}
+                      onChange={(e) => applyFilters({ end_date: e.target.value })}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Location and Online */}
+              <div>
+                <h4 className="text-sm font-medium mb-3 flex items-center space-x-2">
+                  <MapPin className="h-4 w-4" />
+                  <span>Địa điểm</span>
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-medium mb-2 block">Thành phố/Tỉnh</label>
+                    <Input
+                      placeholder="Hà Nội, TP. HCM..."
+                      value={localFilters.location || ""}
+                      onChange={(e) => applyTextSearch({ location: e.target.value })}
+                    />
+                  </div>
+                  <div className="flex items-center space-x-4 pt-6">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="online"
+                        checked={localFilters.isOnline || false}
+                        onCheckedChange={(checked) =>
+                          applyFilters({ isOnline: checked ? true : undefined })
+                        }
+                      />
+                      <Label htmlFor="online" className="text-sm">
+                        Cuộc thi online
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="prize"
+                        checked={localFilters.prizePool || false}
+                        onCheckedChange={(checked) =>
+                          applyFilters({ prizePool: checked ? true : undefined })
+                        }
+                      />
+                      <Label htmlFor="prize" className="text-sm flex items-center">
+                        <Trophy className="h-4 w-4 mr-1" />
+                        Có giải thưởng
+                      </Label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </CollapsibleContent>
+      </Collapsible>
 
       {/* Active Filters Display */}
       {getActiveFiltersCount() > 0 && (
@@ -374,75 +424,90 @@ export default function SearchFilters({
           <span className="text-sm text-muted-foreground">
             Bộ lọc đang áp dụng:
           </span>
-          {filters.category?.map((category) => {
-            const categoryData = competitionCategories.find(
-              (c) => c.name === category,
-            );
-            return (
-              <Badge key={category} variant="secondary" className="gap-1">
-                {categoryData?.icon} {categoryData?.label}
-                <X
-                  className="h-3 w-3 cursor-pointer"
-                  onClick={() => handleCategoryChange(category, false)}
-                />
-              </Badge>
-            );
-          })}
-          {filters.level?.map((level) => {
-            const levelData = levels.find((l) => l.value === level);
-            return (
-              <Badge key={level} variant="secondary" className="gap-1">
-                {levelData?.label}
-                <X
-                  className="h-3 w-3 cursor-pointer"
-                  onClick={() => handleLevelChange(level, false)}
-                />
-              </Badge>
-            );
-          })}
-          {filters.status?.map((status) => {
-            const statusData = statuses.find((s) => s.value === status);
-            return (
-              <Badge key={status} variant="secondary" className="gap-1">
-                {statusData?.label}
-                <X
-                  className="h-3 w-3 cursor-pointer"
-                  onClick={() => handleStatusChange(status, false)}
-                />
-              </Badge>
-            );
-          })}
-          {filters.isOnline && (
+          
+          {/* Category filters */}
+          {localFilters.category?.map((category) => (
+            <Badge key={`cat-${category}`} variant="secondary" className="gap-1">
+              {constants?.categories[category] || category}
+              <X
+                className="h-3 w-3 cursor-pointer"
+                onClick={() => removeFilter('category', category)}
+              />
+            </Badge>
+          ))}
+
+          {/* Status filters */}
+          {localFilters.status?.map((status) => (
+            <Badge key={`status-${status}`} variant="secondary" className="gap-1">
+              {constants?.statuses[status] || status}
+              <X
+                className="h-3 w-3 cursor-pointer"
+                onClick={() => removeFilter('status', status)}
+              />
+            </Badge>
+          ))}
+
+          {/* Level filters */}
+          {localFilters.level?.map((level) => (
+            <Badge key={`level-${level}`} variant="secondary" className="gap-1">
+              {constants?.levels[level] || level}
+              <X
+                className="h-3 w-3 cursor-pointer"
+                onClick={() => removeFilter('level', level)}
+              />
+            </Badge>
+          ))}
+
+          {/* Date filters */}
+          {localFilters.start_date && (
+            <Badge variant="secondary" className="gap-1">
+              Từ: {localFilters.start_date}
+              <X
+                className="h-3 w-3 cursor-pointer"
+                onClick={() => removeFilter('start_date')}
+              />
+            </Badge>
+          )}
+          
+          {localFilters.end_date && (
+            <Badge variant="secondary" className="gap-1">
+              Đến: {localFilters.end_date}
+              <X
+                className="h-3 w-3 cursor-pointer"
+                onClick={() => removeFilter('end_date')}
+              />
+            </Badge>
+          )}
+
+          {/* Other filters */}
+          {localFilters.location && (
+            <Badge variant="secondary" className="gap-1">
+              <MapPin className="h-3 w-3" />
+              {localFilters.location}
+              <X
+                className="h-3 w-3 cursor-pointer"
+                onClick={() => removeFilter('location')}
+              />
+            </Badge>
+          )}
+
+          {localFilters.isOnline && (
             <Badge variant="secondary" className="gap-1">
               Online
               <X
                 className="h-3 w-3 cursor-pointer"
-                onClick={() =>
-                  onFiltersChange({ ...filters, isOnline: undefined })
-                }
+                onClick={() => removeFilter('isOnline')}
               />
             </Badge>
           )}
-          {filters.prizePool && (
+
+          {localFilters.prizePool && (
             <Badge variant="secondary" className="gap-1">
+              <Trophy className="h-3 w-3" />
               Có giải thưởng
               <X
                 className="h-3 w-3 cursor-pointer"
-                onClick={() =>
-                  onFiltersChange({ ...filters, prizePool: undefined })
-                }
-              />
-            </Badge>
-          )}
-          {filters.location && (
-            <Badge variant="secondary" className="gap-1">
-              <MapPin className="h-3 w-3" />
-              {filters.location}
-              <X
-                className="h-3 w-3 cursor-pointer"
-                onClick={() =>
-                  onFiltersChange({ ...filters, location: undefined })
-                }
+                onClick={() => removeFilter('prizePool')}
               />
             </Badge>
           )}

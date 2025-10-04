@@ -78,12 +78,16 @@ export const fetchCompetitions = createAsyncThunk<
   {
     page?: number;
     limit?: number;
-    category?: string;
-    status?: string;
-    featured?: boolean;
+    category?: string[];
+    status?: string[];
+    level?: string[];
     search?: string;
-    level?: string;
     location?: string;
+    start_date?: string;
+    end_date?: string;
+    isOnline?: boolean;
+    prizePool?: boolean;
+    featured?: boolean;
   },
   { rejectValue: string }
 >("competitions/fetch", async (params = {}, { rejectWithValue }) => {
@@ -91,12 +95,25 @@ export const fetchCompetitions = createAsyncThunk<
     const query = new URLSearchParams();
     if (params.page) query.set("page", String(params.page));
     if (params.limit) query.set("limit", String(params.limit));
-    if (params.category) query.set("category", params.category);
-    if (params.status) query.set("status", params.status);
-    if (params.featured) query.set("featured", "true");
     if (params.search) query.set("search", params.search);
-    if (params.level) query.set("level", params.level);
     if (params.location) query.set("location", params.location);
+    if (params.start_date) query.set("start_date", params.start_date);
+    if (params.end_date) query.set("end_date", params.end_date);
+    if (params.isOnline !== undefined) query.set("isOnline", String(params.isOnline));
+    if (params.prizePool !== undefined) query.set("prizePool", String(params.prizePool));
+    if (params.featured) query.set("featured", "true");
+    
+    // Handle array parameters
+    if (params.category?.length) {
+      params.category.forEach(cat => query.append("category", cat));
+    }
+    if (params.status?.length) {
+      params.status.forEach(status => query.append("status", status));
+    }
+    if (params.level?.length) {
+      params.level.forEach(level => query.append("level", level));
+    }
+    
     const url = `${COMPETITIONS_ENDPOINT}${query.toString() ? `?${query.toString()}` : ""}`;
     const res = await api.get<ListResponse<CompetitionSummary>>(url);
     return { data: res.data || [], pagination: res.pagination };

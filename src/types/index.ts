@@ -185,17 +185,38 @@ export interface Skill {
 }
 
 export interface SearchFilters {
-  category?: CompetitionCategory[];
-  level?: CompetitionLevel[];
+  search?: string;
+  category?: string[];
+  level?: string[];
   location?: string;
   isOnline?: boolean;
   dateRange?: {
     start: Date;
     end: Date;
   };
+  start_date?: string;
+  end_date?: string;
   skills?: string[];
   prizePool?: boolean;
-  status?: CompetitionStatus[];
+  status?: string[];
+}
+
+export interface CompetitionConstants {
+  categories: Record<string, string>;
+  levels: Record<string, string>;
+  statuses: Record<string, string>;
+}
+
+export interface CompetitionFilters {
+  search?: string;
+  category?: string[];
+  status?: string[];
+  level?: string[];
+  start_date?: string;
+  end_date?: string;
+  location?: string;
+  isOnline?: boolean;
+  prizePool?: boolean;
 }
 
 export interface CommunityPost {
