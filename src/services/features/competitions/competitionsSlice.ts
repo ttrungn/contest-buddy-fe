@@ -80,6 +80,9 @@ export const fetchCompetitions = createAsyncThunk<
     category?: string;
     status?: string;
     featured?: boolean;
+    search?: string;
+    level?: string;
+    location?: string;
   },
   { rejectValue: string }
 >("competitions/fetch", async (params = {}, { rejectWithValue }) => {
@@ -90,6 +93,9 @@ export const fetchCompetitions = createAsyncThunk<
     if (params.category) query.set("category", params.category);
     if (params.status) query.set("status", params.status);
     if (params.featured) query.set("featured", "true");
+    if (params.search) query.set("search", params.search);
+    if (params.level) query.set("level", params.level);
+    if (params.location) query.set("location", params.location);
     const url = `${COMPETITIONS_ENDPOINT}${query.toString() ? `?${query.toString()}` : ""}`;
     const res = await api.get<ListResponse<CompetitionSummary>>(url);
     return { data: res.data || [], pagination: res.pagination };
@@ -344,8 +350,31 @@ const competitionsSlice = createSlice({
       .addCase(createCompetition.rejected, (state, action) => {
         state.error = action.payload || "Failed to create competition";
       })
+      .addCase(updateCompetition.fulfilled, (state, action) => {
+        // Update the competition in the list if it exists
+        const updatedCompetition = action.payload.data;
+        if (updatedCompetition) {
+          const index = state.list.findIndex(comp => comp.id === updatedCompetition.id);
+          if (index !== -1) {
+            state.list[index] = { ...state.list[index], title: updatedCompetition.title };
+          }
+          // Also update detail if it's the same competition
+          if (state.detail?.id === updatedCompetition.id) {
+            state.detail = { ...state.detail, title: updatedCompetition.title };
+          }
+        }
+      })
       .addCase(updateCompetition.rejected, (state, action) => {
         state.error = action.payload || "Failed to update competition";
+      })
+      .addCase(deleteCompetition.fulfilled, (state, action) => {
+        // Remove the competition from the list
+        const deletedId = action.meta.arg;
+        state.list = state.list.filter(comp => comp.id !== deletedId);
+        // Clear detail if it's the deleted competition
+        if (state.detail?.id === deletedId) {
+          state.detail = null;
+        }
       })
       .addCase(deleteCompetition.rejected, (state, action) => {
         state.error = action.payload || "Failed to delete competition";

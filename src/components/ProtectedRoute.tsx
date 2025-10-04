@@ -36,7 +36,7 @@ export default function ProtectedRoute({
     }
 
     // If specific roles are required
-    if (allowedRoles.length > 0 && isAuthenticated && user) {
+    if (allowedRoles.length > 0 && isAuthenticated && user && user.roles) {
         const hasAllowedRole = user.roles.some(role => allowedRoles.includes(role));
 
         if (!hasAllowedRole) {
@@ -46,7 +46,7 @@ export default function ProtectedRoute({
     }
 
     // If specific roles are blocked from this route
-    if (blockedRoles.length > 0 && isAuthenticated && user) {
+    if (blockedRoles.length > 0 && isAuthenticated && user && user.roles) {
         const isBlocked = user.roles.some(role => blockedRoles.includes(role));
         if (isBlocked) {
             return <Navigate to={blockedRedirectTo} state={{ from: location }} replace />;

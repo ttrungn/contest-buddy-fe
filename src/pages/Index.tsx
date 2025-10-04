@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import {
   TrendingUp,
@@ -22,17 +22,87 @@ import { SearchFilters as SearchFiltersType, Competition } from "@/types";
 import { useAppDispatch, useAppSelector } from "@/services/store/store";
 import { fetchCompetitions, fetchFeaturedCompetitions } from "@/services/features/competitions/competitionsSlice";
 
+// Debounce function
+const debounce = (func: Function, delay: number) => {
+  let timeoutId: NodeJS.Timeout;
+  return (...args: any[]) => {
+    clearTimeout(timeoutId);
+    timeoutId = setTimeout(() => func.apply(null, args), delay);
+  };
+};
+
 export default function Index() {
   const [filters, setFilters] = useState<SearchFiltersType>({});
   const [searchQuery, setSearchQuery] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
   const dispatch = useAppDispatch();
-  const { list, featured } = useAppSelector((s) => s.competitions);
+  const { list, featured, isLoading } = useAppSelector((s) => s.competitions);
   const { isAuthenticated } = useAppSelector((s) => s.auth);
 
+  // Debounced search function
+  const debouncedSearch = useCallback(
+    debounce((searchTerm: string) => {
+      dispatch(fetchCompetitions({ 
+        page: 1, 
+        limit: 30, 
+        search: searchTerm,
+        ...buildFilterParams(filters)
+      }));
+      setCurrentPage(1);
+    }, 500),
+    [dispatch, filters]
+  );
+
+  // Build filter parameters for API
+  const buildFilterParams = (filterState: SearchFiltersType) => {
+    const params: any = {};
+    
+    if (filterState.category?.length) {
+      params.category = filterState.category[0]; // API supports single category
+    }
+    if (filterState.status?.length) {
+      params.status = filterState.status[0]; // API supports single status
+    }
+    if (filterState.level?.length) {
+      params.level = filterState.level[0]; // API supports single level
+    }
+    if (filterState.location) {
+      params.location = filterState.location;
+    }
+    
+    return params;
+  };
+
+  // Initial load
   useEffect(() => {
     dispatch(fetchCompetitions({ page: 1, limit: 30 }));
     dispatch(fetchFeaturedCompetitions({ page: 1, limit: 12 }));
   }, [dispatch]);
+
+  // Handle search query changes
+  useEffect(() => {
+    if (searchQuery) {
+      debouncedSearch(searchQuery);
+    } else {
+      dispatch(fetchCompetitions({ 
+        page: 1, 
+        limit: 30,
+        ...buildFilterParams(filters)
+      }));
+      setCurrentPage(1);
+    }
+  }, [searchQuery, debouncedSearch, dispatch, filters]);
+
+  // Handle filter changes
+  useEffect(() => {
+    dispatch(fetchCompetitions({ 
+      page: 1, 
+      limit: 30,
+      search: searchQuery || undefined,
+      ...buildFilterParams(filters)
+    }));
+    setCurrentPage(1);
+  }, [filters, dispatch, searchQuery]);
 
   // Map API items (summary) to UI Competition card shape with safe defaults
   const mapToCard = (c: any) => ({
@@ -57,56 +127,8 @@ export default function Index() {
   const cardList = (list || []).map(mapToCard);
   const cardFeatured = (featured || []).map(mapToCard);
 
-  const filteredCompetitions = useMemo(() => {
-    let filtered = cardList as any[];
-
-    // Search by query
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(
-        (comp) =>
-          comp.title.toLowerCase().includes(query) ||
-          comp.description.toLowerCase().includes(query) ||
-          comp.organizer.toLowerCase().includes(query) ||
-          comp.tags.some((tag) => tag.toLowerCase().includes(query)),
-      );
-    }
-
-    // Apply filters
-    if (filters.category?.length) {
-      filtered = filtered.filter((comp) =>
-        filters.category!.includes(comp.category),
-      );
-    }
-
-    if (filters.level?.length) {
-      filtered = filtered.filter((comp) => filters.level!.includes(comp.level));
-    }
-
-    if (filters.status?.length) {
-      filtered = filtered.filter((comp) =>
-        filters.status!.includes(comp.status),
-      );
-    }
-
-    if (filters.isOnline !== undefined) {
-      filtered = filtered.filter((comp) => comp.isOnline === filters.isOnline);
-    }
-
-    if (filters.prizePool) {
-      filtered = filtered.filter((comp) => comp.prizePool);
-    }
-
-    if (filters.location) {
-      const location = filters.location.toLowerCase();
-      filtered = filtered.filter((comp) =>
-        comp.location.toLowerCase().includes(location),
-      );
-    }
-
-    return filtered;
-  }, [filters, searchQuery, cardList]);
-
+  // Server-side filtering - no need for client-side filtering
+  const filteredCompetitions = cardList as any[];
   const featuredCompetitions = cardFeatured as any[];
   const upcomingCompetitions = cardList.filter((comp: any) => comp.status === "registration_open") as any[];
   const ongoingCompetitions = cardList.filter((comp: any) => comp.status === "in_progress") as any[];
@@ -220,6 +242,23 @@ export default function Index() {
               </div>
 
               <TabsContent value="all" className="space-y-6">
+                {/* Search Input */}
+                <div className="flex gap-4 items-center">
+                  <div className="relative flex-1 max-w-md">
+                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <input
+                      type="text"
+                      placeholder="Tìm kiếm cuộc thi..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="w-full pl-10 pr-4 py-2 border border-input bg-background rounded-md text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    />
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    {isLoading ? "Đang tải..." : `${filteredCompetitions.length} cuộc thi`}
+                  </div>
+                </div>
+
                 <SearchFilters
                   filters={filters}
                   onFiltersChange={setFilters}
