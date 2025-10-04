@@ -36,6 +36,7 @@ export const ACHIEVEMENT_DETAIL_ENDPOINT = (id: string) =>
 // Organizer endpoints
 export const ORGANIZER_PROFILE_ENDPOINT = `${BASE_URL}/api/organizer/profile`;
 export const ORGANIZER_AVATAR_ENDPOINT = `${BASE_URL}/api/organizer/avatar`;
+export const ORGANIZER_COMPETITIONS_ENDPOINT = `${BASE_URL}/api/organizer/competitions`;
 
 // Competition endpoints
 export const COMPETITIONS_ENDPOINT = `${BASE_URL}/api/competitions`;
@@ -64,6 +65,21 @@ export const USER_PARTICIPATED_COMPETITIONS_ENDPOINT = `${BASE_URL}/api/user/par
 // Team endpoints
 export const TEAM_MEMBERS_ENDPOINT = (id: string) =>
   `${BASE_URL}/api/teams/${id}/members`;
+
+// Teams API endpoints
+export const TEAMS_ENDPOINT = `${BASE_URL}/api/teams`;
+export const TEAM_BY_ID_ENDPOINT = (id: string) => `${BASE_URL}/api/teams/${id}`;
+export const USER_INVITATIONS_ENDPOINT = `${BASE_URL}/api/user/invitations`;
+
+// Team Invitations API endpoints
+export const TEAM_INVITATIONS_ENDPOINT = `${BASE_URL}/api/team-invitations`;
+export const TEAM_INVITATION_ACCEPT_ENDPOINT = (invitationId: string) => `${BASE_URL}/api/team-invitations/${invitationId}/accept`;
+export const TEAM_INVITATION_REJECT_ENDPOINT = (invitationId: string) => `${BASE_URL}/api/team-invitations/${invitationId}/reject`;
+export const TEAM_INVITATION_CANCEL_ENDPOINT = (invitationId: string) => `${BASE_URL}/api/team-invitations/${invitationId}/cancel`;
+
+// Team Member Management API endpoints
+export const TEAM_MEMBER_ROLE_ENDPOINT = (teamId: string, memberId: string) => `${BASE_URL}/api/teams/${teamId}/members/${memberId}/role`;
+export const TEAM_MEMBER_DELETE_ENDPOINT = (teamId: string, memberId: string) => `${BASE_URL}/api/teams/${teamId}/members/${memberId}`;
 
 // Plans
 export const PLANS_ENDPOINT = `${BASE_URL}/api/plans`;

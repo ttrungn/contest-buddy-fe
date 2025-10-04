@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import {
   BarChart3,
   DollarSign,
@@ -47,20 +47,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { mockCompetitionManagement } from "@/lib/mockData";
 import { useAppDispatch, useAppSelector } from "@/services/store/store";
-import { fetchCompetitions, fetchCompetitionDetail, updateCompetition, deleteCompetition } from "@/services/features/competitions/competitionsSlice";
-import CreateCompetitionModal from "@/components/CreateCompetitionModal";
-import UpdateCompetitionModal from "@/components/UpdateCompetitionModal";
+import { fetchOrganizerCompetitions, fetchCompetitionDetail, updateCompetition, deleteCompetition } from "@/services/features/competitions/competitionsSlice";
+import CompetitionModals from "@/components/modals/CompetitionModals";
 import { CompetitionManagement, CompetitionParticipant, Competition, ManagementStatus } from "@/types";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -71,41 +63,43 @@ export default function CompetitionManagementPage() {
   const { toast } = useToast();
 
   useEffect(() => {
-    dispatch(fetchCompetitions({ page: 1, limit: 50 }));
+    dispatch(fetchOrganizerCompetitions({ page: 1, limit: 50 }));
   }, [dispatch]);
 
   // Convert API data to CompetitionManagement format
   const competitions = list
     .filter((comp) => comp && comp.id) // Filter out null/undefined items
-    .map((comp) => ({
+    .map((comp: any) => ({
       id: `mgmt-${comp.id}`,
       competitionId: comp.id,
       competition: {
         id: comp.id,
         title: comp.title,
-        description: "",
+        description: comp.description || "",
         category: comp.category || "other",
         organizer: "Current Organizer",
-        startDate: new Date(),
-        endDate: new Date(),
-        registrationDeadline: new Date(),
-        location: "TBA",
+        startDate: comp.start_date ? new Date(comp.start_date) : new Date(),
+        endDate: comp.end_date ? new Date(comp.end_date) : new Date(),
+        registrationDeadline: comp.registration_deadline ? new Date(comp.registration_deadline) : new Date(),
+        location: comp.location || "TBA",
         isOnline: false,
-        prizePool: "TBA",
-        participants: 0,
-        maxParticipants: 100,
-        requiredSkills: [],
-        level: "beginner",
-        tags: [],
-        imageUrl: undefined,
-        website: undefined,
-        rules: undefined,
+        prizePool: comp.prize_pool_text || "TBA",
+        participants: comp.participants_count || 0,
+        maxParticipants: comp.max_participants || 100,
+        requiredSkills: comp.competitionRequiredSkills || [],
+        level: comp.level || "beginner",
+        tags: comp.competitionTags || [],
+        imageUrl: comp.image_url,
+        website: comp.website,
+        rules: comp.rules,
         featured: comp.featured || false,
         status: comp.status || "draft",
+        isRegisteredAsTeam: comp.isRegisteredAsTeam || false,
+        maxParticipantsPerTeam: comp.maxParticipantsPerTeam || 1,
       },
-      organizerId: "current-organizer",
+      organizerId: comp.organizer_id || "current-organizer",
       organizer: {
-        id: "current-organizer",
+        id: comp.organizer_id || "current-organizer",
         name: "Current Organizer",
         email: "organizer@example.com",
         avatar: undefined,
@@ -116,12 +110,12 @@ export default function CompetitionManagementPage() {
       settings: {
         allowLateRegistration: false,
         autoApproveRegistrations: true,
-        maxParticipants: 100,
+        maxParticipants: comp.max_participants || 100,
         registrationFee: 0,
         emailNotifications: true,
         publicLeaderboard: true,
-        allowTeamRegistration: true,
-        maxTeamSize: 5,
+        allowTeamRegistration: comp.isRegisteredAsTeam || false,
+        maxTeamSize: comp.maxParticipantsPerTeam || 5,
       },
       finances: {
         budget: 0,
@@ -134,7 +128,7 @@ export default function CompetitionManagementPage() {
         netProfit: 0,
       },
       statistics: {
-        totalRegistrations: 0,
+        totalRegistrations: comp.participants_count || 0,
         approvedRegistrations: 0,
         pendingRegistrations: 0,
         rejectedRegistrations: 0,
@@ -164,18 +158,16 @@ export default function CompetitionManagementPage() {
     if (competitions.length > 0) {
       // If no competition is selected or the selected competition no longer exists
       if (!selectedCompetition || !competitions.find(comp => comp.competitionId === selectedCompetition.competitionId)) {
+        // Select the first available competition
         setSelectedCompetition(competitions[0]);
-      } else {
-        // If the selected competition still exists, update it with fresh data
-        const updatedCompetition = competitions.find(comp => comp.competitionId === selectedCompetition.competitionId);
-        if (updatedCompetition) {
-          setSelectedCompetition(updatedCompetition);
-        }
       }
     } else {
+      // No competitions available, clear selection
       setSelectedCompetition(null);
     }
   }, [competitions]); // Only depend on competitions to avoid infinite loop
+
+  // Handle dialog closing - removed problematic useEffect
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("vi-VN", {
@@ -295,6 +287,16 @@ export default function CompetitionManagementPage() {
     setIsDeleteDialogOpen(true);
   };
 
+  const resetDeleteStates = () => {
+    setCompetitionToDelete(null);
+    setIsDeleteDialogOpen(false);
+  };
+
+  const handleCloseDeleteDialog = useCallback(() => {
+    setIsDeleteDialogOpen(false);
+    setCompetitionToDelete(null);
+  }, []);
+
   const confirmDeleteCompetition = async () => {
     if (!competitionToDelete) return;
 
@@ -307,17 +309,23 @@ export default function CompetitionManagementPage() {
         description: "Cuộc thi đã được xóa thành công",
       });
       
-      // Refresh the competitions list
-      dispatch(fetchCompetitions({ page: 1, limit: 50 }));
+      // Clear the selected competition if it's the one being deleted
+      if (selectedCompetition && selectedCompetition.competitionId === competitionToDelete.competitionId) {
+        setSelectedCompetition(null);
+      }
       
-      setCompetitionToDelete(null);
-      setIsDeleteDialogOpen(false);
+      // Reset delete-related states
+      resetDeleteStates();
+      
+      // Note: No need to fetch competitions again as Redux slice already updates the list
     } catch (error: any) {
       toast({
         title: "Lỗi",
         description: error || "Có lỗi xảy ra khi xóa cuộc thi",
         variant: "destructive",
       });
+      // Reset states even on error
+      resetDeleteStates();
     }
   };
 
@@ -329,7 +337,7 @@ export default function CompetitionManagementPage() {
     });
     
     // Refresh the competitions list
-    dispatch(fetchCompetitions({ page: 1, limit: 50 }));
+    dispatch(fetchOrganizerCompetitions({ page: 1, limit: 50 }));
     
     setIsUpdateModalOpen(false);
     setCompetitionToUpdate(null);
@@ -390,7 +398,7 @@ export default function CompetitionManagementPage() {
               <AlertTriangle className="h-12 w-12 text-destructive mx-auto mb-4" />
               <h2 className="text-xl font-semibold mb-2">Lỗi tải dữ liệu</h2>
               <p className="text-muted-foreground mb-4">{error}</p>
-              <Button onClick={() => dispatch(fetchCompetitions({ page: 1, limit: 50 }))}>
+              <Button onClick={() => dispatch(fetchOrganizerCompetitions({ page: 1, limit: 50 }))}>
                 Thử lại
               </Button>
             </div>
@@ -1190,119 +1198,27 @@ export default function CompetitionManagementPage() {
         )}
       </div>
 
-      {/* Create Competition Modal */}
-      <CreateCompetitionModal
-        isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
-        onSuccess={(newCompetition) => {
-          // Tạo competition management object từ competition mới
-          const newCompetitionManagement: CompetitionManagement = {
-            id: `mgmt-${newCompetition.id}`,
-            competitionId: newCompetition.id!,
-            competition: {
-              id: newCompetition.id!,
-              title: newCompetition.title!,
-              description: newCompetition.description!,
-              category: newCompetition.category!,
-              organizer: newCompetition.organizer!,
-              startDate: newCompetition.startDate!,
-              endDate: newCompetition.endDate!,
-              registrationDeadline: newCompetition.registrationDeadline!,
-              location: newCompetition.location!,
-              isOnline: newCompetition.isOnline!,
-              prizePool: newCompetition.prizePool,
-              participants: newCompetition.participants!,
-              maxParticipants: newCompetition.maxParticipants,
-              requiredSkills: newCompetition.requiredSkills!,
-              level: newCompetition.level!,
-              tags: newCompetition.tags!,
-              imageUrl: newCompetition.imageUrl,
-              website: newCompetition.website,
-              rules: newCompetition.rules,
-              featured: newCompetition.featured!,
-              status: newCompetition.status!,
-            },
-            organizerId: "current-organizer",
-            organizer: {
-              id: "current-organizer",
-              name: newCompetition.organizer!,
-              email: "organizer@example.com",
-              avatar: undefined,
-            },
-            status: "published" as ManagementStatus,
-            createdAt: new Date(),
-            updatedAt: new Date(),
-            settings: {
-              allowLateRegistration: false,
-              autoApproveRegistrations: true,
-              maxParticipants: newCompetition.maxParticipants,
-              registrationFee: 0,
-              emailNotifications: true,
-              publicLeaderboard: true,
-              allowTeamRegistration: true,
-              maxTeamSize: 5,
-            },
-            finances: {
-              budget: 0,
-              revenue: [],
-              expenses: [],
-              prizePool: 0,
-              sponsorships: [],
-              totalRevenue: 0,
-              totalExpenses: 0,
-              netProfit: 0,
-            },
-            statistics: {
-              totalRegistrations: 0,
-              approvedRegistrations: 0,
-              pendingRegistrations: 0,
-              rejectedRegistrations: 0,
-              completedSubmissions: 0,
-              registrationsByDate: [],
-              participantsBySchool: [],
-              participantsByRegion: [],
-              averageRating: 0,
-              completionRate: 0,
-            },
-            participants: [],
-          };
-
+      {/* Competition Modals */}
+      <CompetitionModals
+        isCreateModalOpen={isCreateModalOpen}
+        onCreateModalClose={() => setIsCreateModalOpen(false)}
+        onCreateSuccess={(newCompetition) => {
           // Refresh danh sách từ API
-          dispatch(fetchCompetitions({ page: 1, limit: 50 }));
+          dispatch(fetchOrganizerCompetitions({ page: 1, limit: 50 }));
         }}
-      />
-
-      {/* Update Competition Modal */}
-      <UpdateCompetitionModal
-        isOpen={isUpdateModalOpen}
-        onClose={() => {
+        isUpdateModalOpen={isUpdateModalOpen}
+        onUpdateModalClose={() => {
           setIsUpdateModalOpen(false);
           setCompetitionToUpdate(null);
         }}
-        competition={competitionToUpdate}
-        onSuccess={handleUpdateSuccess}
+        competitionToUpdate={competitionToUpdate}
+        onUpdateSuccess={handleUpdateSuccess}
+        isDeleteModalOpen={isDeleteDialogOpen}
+        onDeleteModalClose={handleCloseDeleteDialog}
+        onDeleteConfirm={confirmDeleteCompetition}
+        competitionToDelete={competitionToDelete}
+        isDeleting={isLoading}
       />
-
-      {/* Delete Confirmation Dialog */}
-      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Xác nhận xóa cuộc thi</DialogTitle>
-            <DialogDescription>
-              Bạn có chắc chắn muốn xóa cuộc thi "{competitionToDelete?.competition?.title}"? 
-              Hành động này không thể hoàn tác.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex justify-end space-x-2">
-            <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
-              Hủy
-            </Button>
-            <Button variant="destructive" onClick={confirmDeleteCompetition}>
-              Xóa
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

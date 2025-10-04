@@ -4,6 +4,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "@/services/store/store";
 import { fetchCommunityProfiles, updateFilters, clearFilters } from "@/services/features/community/communitySlice";
 import { CommunityFilters } from "@/interfaces/ICommunity";
+import { InviteToTeamModal } from "@/components/modals";
 import {
   MessageSquare,
   Users,
@@ -166,19 +167,11 @@ export default function Community() {
   const UserCard = ({ user }: { user: CommunityUser }) => {
     const [isInviting, setIsInviting] = useState(false);
     const [isMessaging, setIsMessaging] = useState(false);
+    const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
 
     const handleInvite = (e: React.MouseEvent) => {
       e.stopPropagation();
-      setIsInviting(true);
-      
-      // Mock API call
-      setTimeout(() => {
-        setIsInviting(false);
-        toast({
-          title: "Gửi lời mời thành công!",
-          description: `Đã gửi lời mời đến ${user.fullName}. Họ sẽ nhận được thông báo.`,
-        });
-      }, 1000);
+      setIsInviteModalOpen(true);
     };
 
     const handleMessage = (e: React.MouseEvent) => {
@@ -193,6 +186,7 @@ export default function Community() {
     };
 
     return (
+      <>
       <Card className="card-hover cursor-pointer h-full flex flex-col" onClick={() => navigate(`/user/${user.userId}`)}>
         <CardHeader className="pb-3 flex-shrink-0">
           <div className="flex items-start space-x-4 w-full">
@@ -313,6 +307,15 @@ export default function Community() {
           </div>
         </CardContent>
       </Card>
+      
+      {/* Invite to Team Modal */}
+      <InviteToTeamModal
+        isOpen={isInviteModalOpen}
+        onClose={() => setIsInviteModalOpen(false)}
+        inviteeId={user.userId}
+        inviteeName={user.fullName}
+      />
+      </>
     );
   };
 

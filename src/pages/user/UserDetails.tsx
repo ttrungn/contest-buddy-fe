@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
+import { InviteToTeamModal } from "@/components/modals";
 import {
   MessageSquare,
   UserPlus,
@@ -101,6 +102,7 @@ export default function UserDetails() {
   const [error, setError] = useState<string | null>(null);
   const [isInviting, setIsInviting] = useState(false);
   const [isMessaging, setIsMessaging] = useState(false);
+  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
   const { toast } = useToast();
   const { openChatWithUser } = useChat();
 
@@ -210,17 +212,7 @@ export default function UserDetails() {
 
   const handleInvite = () => {
     if (!userProfile) return;
-    
-    setIsInviting(true);
-    
-    // Mock API call
-    setTimeout(() => {
-      setIsInviting(false);
-      toast({
-        title: "Gửi lời mời thành công!",
-        description: `Đã gửi lời mời đến ${userProfile.full_name}. Họ sẽ nhận được thông báo.`,
-      });
-    }, 1000);
+    setIsInviteModalOpen(true);
   };
 
   const handleMessage = () => {
@@ -236,6 +228,7 @@ export default function UserDetails() {
   };
 
   return (
+    <>
     <div className="min-h-screen bg-background">
       <div className="container py-8">
         {/* Header */}
@@ -636,5 +629,16 @@ export default function UserDetails() {
         </Tabs>
       </div>
     </div>
+    
+    {/* Invite to Team Modal */}
+    {userProfile && (
+      <InviteToTeamModal
+        isOpen={isInviteModalOpen}
+        onClose={() => setIsInviteModalOpen(false)}
+        inviteeId={userProfile.userId}
+        inviteeName={userProfile.full_name}
+      />
+    )}
+    </>
   );
 } 

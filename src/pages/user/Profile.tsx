@@ -21,7 +21,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
-import ProjectModal from "@/components/ProjectModal";
+import ProjectModal from "@/components/modals/ProjectModal";
 // Define skill categories for display
 const skillCategories = [
   { value: "technical", label: "Kỹ thuật" },
@@ -36,7 +36,7 @@ import { cn } from "@/lib/utils";
 import { useAppDispatch, useAppSelector } from "@/services/store/store";
 import { fetchCustomerProfile, uploadCustomerAvatar, updateCustomerProfile, fetchUserSkills, deleteUserSkill, updateUserSkill, fetchUserProjects, addUserProject, updateUserProject, deleteUserProject, fetchUserAchievements, addUserAchievement, updateUserAchievement, deleteUserAchievement, fetchAchievementDetail } from "@/services/features/users/userSlice";
 import { useToast } from "@/hooks/use-toast";
-import SkillManagementModal from "@/components/SkillManagementModal";
+import SkillManagementModal from "@/components/modals/SkillManagementModal";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";

@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
 import { useMemo, useState, useEffect } from "react";
 import { useAppDispatch, useAppSelector } from "@/services/store/store";
 import { fetchCompetitionDetail } from "@/services/features/competitions/competitionsSlice";
-import RegistrationModal from "@/components/RegistrationModal";
+import RegistrationModal from "@/components/modals/RegistrationModal";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { Flag } from "lucide-react";
