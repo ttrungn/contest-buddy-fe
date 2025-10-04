@@ -47,18 +47,28 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { mockCompetitionManagement } from "@/lib/mockData";
 import { useAppDispatch, useAppSelector } from "@/services/store/store";
-import { fetchCompetitions } from "@/services/features/competitions/competitionsSlice";
+import { fetchCompetitions, fetchCompetitionDetail, updateCompetition, deleteCompetition } from "@/services/features/competitions/competitionsSlice";
 import CreateCompetitionModal from "@/components/CreateCompetitionModal";
+import UpdateCompetitionModal from "@/components/UpdateCompetitionModal";
 import { CompetitionManagement, CompetitionParticipant, Competition, ManagementStatus } from "@/types";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
 
 export default function CompetitionManagementPage() {
   const dispatch = useAppDispatch();
   const { list, isLoading, error } = useAppSelector((s) => s.competitions);
+  const { toast } = useToast();
 
   useEffect(() => {
     dispatch(fetchCompetitions({ page: 1, limit: 50 }));
@@ -144,13 +154,28 @@ export default function CompetitionManagementPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTab, setSelectedTab] = useState("overview");
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
+  const [competitionToUpdate, setCompetitionToUpdate] = useState(null);
+  const [competitionToDelete, setCompetitionToDelete] = useState(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
   // Update selected competition when competitions change
   useEffect(() => {
-    if (competitions.length > 0 && !selectedCompetition) {
-      setSelectedCompetition(competitions[0]);
+    if (competitions.length > 0) {
+      // If no competition is selected or the selected competition no longer exists
+      if (!selectedCompetition || !competitions.find(comp => comp.competitionId === selectedCompetition.competitionId)) {
+        setSelectedCompetition(competitions[0]);
+      } else {
+        // If the selected competition still exists, update it with fresh data
+        const updatedCompetition = competitions.find(comp => comp.competitionId === selectedCompetition.competitionId);
+        if (updatedCompetition) {
+          setSelectedCompetition(updatedCompetition);
+        }
+      }
+    } else {
+      setSelectedCompetition(null);
     }
-  }, [competitions, selectedCompetition]);
+  }, [competitions]); // Only depend on competitions to avoid infinite loop
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("vi-VN", {
@@ -253,6 +278,62 @@ export default function CompetitionManagementPage() {
         .includes(searchQuery.toLowerCase()) ||
       participant.user.school.toLowerCase().includes(searchQuery.toLowerCase()),
   ) || [];
+
+  const handleUpdateCompetition = async (competition: any) => {
+    try {
+      // Fetch the latest competition detail
+      const result = await dispatch(fetchCompetitionDetail(competition.competitionId)).unwrap();
+      setCompetitionToUpdate(result);
+      setIsUpdateModalOpen(true);
+    } catch (error) {
+      console.error("Failed to fetch competition detail:", error);
+    }
+  };
+
+  const handleDeleteCompetition = (competition: any) => {
+    setCompetitionToDelete(competition);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const confirmDeleteCompetition = async () => {
+    if (!competitionToDelete) return;
+
+    try {
+      await dispatch(deleteCompetition(competitionToDelete.competitionId)).unwrap();
+      
+      // Show success toast
+      toast({
+        title: "Thành công!",
+        description: "Cuộc thi đã được xóa thành công",
+      });
+      
+      // Refresh the competitions list
+      dispatch(fetchCompetitions({ page: 1, limit: 50 }));
+      
+      setCompetitionToDelete(null);
+      setIsDeleteDialogOpen(false);
+    } catch (error: any) {
+      toast({
+        title: "Lỗi",
+        description: error || "Có lỗi xảy ra khi xóa cuộc thi",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleUpdateSuccess = () => {
+    // Show success toast
+    toast({
+      title: "Thành công!",
+      description: "Cuộc thi đã được cập nhật thành công",
+    });
+    
+    // Refresh the competitions list
+    dispatch(fetchCompetitions({ page: 1, limit: 50 }));
+    
+    setIsUpdateModalOpen(false);
+    setCompetitionToUpdate(null);
+  };
 
   const StatCard = ({
     title,
@@ -502,10 +583,35 @@ export default function CompetitionManagementPage() {
                     <Eye className="h-4 w-4 mr-1" />
                     Xem trang thi
                   </Button>
-                  <Button variant="outline" size="sm">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => handleUpdateCompetition(selectedCompetition)}
+                  >
                     <Edit className="h-4 w-4 mr-1" />
                     Chỉnh sửa
                   </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" size="sm">
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => handleUpdateCompetition(selectedCompetition)}>
+                        <Edit className="h-4 w-4 mr-2" />
+                        Chỉnh sửa
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem 
+                        className="text-red-600"
+                        onClick={() => handleDeleteCompetition(selectedCompetition)}
+                      >
+                        <XCircle className="h-4 w-4 mr-2" />
+                        Xóa cuộc thi
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
               </div>
               <div className="space-y-3">
@@ -1165,6 +1271,38 @@ export default function CompetitionManagementPage() {
           dispatch(fetchCompetitions({ page: 1, limit: 50 }));
         }}
       />
+
+      {/* Update Competition Modal */}
+      <UpdateCompetitionModal
+        isOpen={isUpdateModalOpen}
+        onClose={() => {
+          setIsUpdateModalOpen(false);
+          setCompetitionToUpdate(null);
+        }}
+        competition={competitionToUpdate}
+        onSuccess={handleUpdateSuccess}
+      />
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Xác nhận xóa cuộc thi</DialogTitle>
+            <DialogDescription>
+              Bạn có chắc chắn muốn xóa cuộc thi "{competitionToDelete?.competition?.title}"? 
+              Hành động này không thể hoàn tác.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end space-x-2">
+            <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
+              Hủy
+            </Button>
+            <Button variant="destructive" onClick={confirmDeleteCompetition}>
+              Xóa
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

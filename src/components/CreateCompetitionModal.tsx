@@ -24,11 +24,11 @@ import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import { Competition } from "@/types";
-import { CompetitionCategory, CompetitionLevel } from "@/interfaces/ICompetition";
+import { CompetitionCategory, CompetitionLevel, CompetitionStatus } from "@/interfaces/ICompetition";
 import { useAppDispatch, useAppSelector } from "@/services/store/store";
 import { createCompetition } from "@/services/features/competitions/competitionsSlice";
 import { fetchPlans } from "@/services/features/plans/plansSlice";
-import { CreateCompetitionRequest, CompetitionStatus } from "@/interfaces/ICompetition";
+import { CreateCompetitionRequest } from "@/interfaces/ICompetition";
 import { Plan } from "@/interfaces/IPlan";
 
 interface CreateCompetitionModalProps {
@@ -78,6 +78,7 @@ export default function CreateCompetitionModal({
         title: "",
         description: "",
         category: "" as CompetitionCategory,
+        status: "draft" as CompetitionStatus,
         planId: "",
         startDate: "",
         endDate: "",
@@ -94,14 +95,6 @@ export default function CreateCompetitionModal({
         rules: "",
         featured: false,
         requiredSkills: [] as string[],
-        // Settings
-        allowLateRegistration: false,
-        autoApproveRegistrations: true,
-        registrationFee: "",
-        emailNotifications: true,
-        publicLeaderboard: true,
-        allowTeamRegistration: true,
-        maxTeamSize: 5,
     });
 
     const [newTag, setNewTag] = useState("");
@@ -204,13 +197,14 @@ export default function CreateCompetitionModal({
                 prize_pool_text: formData.prizePool || undefined,
                 max_participants: formData.maxParticipants ? parseInt(formData.maxParticipants) : undefined,
                 isRegisteredAsTeam: formData.isRegisteredAsTeam,
-                maxParticipantsPerTeam: formData.maxParticipantsPerTeam,
+                // Only include maxParticipantsPerTeam if isRegisteredAsTeam is true
+                ...(formData.isRegisteredAsTeam && { maxParticipantsPerTeam: formData.maxParticipantsPerTeam }),
                 level: formData.level,
                 image_url: formData.imageUrl || undefined,
                 website: formData.website || undefined,
                 rules: formData.rules || undefined,
                 featured: formData.featured,
-                status: "published" as CompetitionStatus,
+                status: formData.status,
                 competitionTags: formData.tags,
                 competitionRequiredSkills: formData.requiredSkills.map(skill => ({
                     name: skill,
@@ -233,6 +227,7 @@ export default function CreateCompetitionModal({
                 title: "",
                 description: "",
                 category: "" as CompetitionCategory,
+                status: "draft" as CompetitionStatus,
                 planId: "",
                 startDate: "",
                 endDate: "",
@@ -249,13 +244,6 @@ export default function CreateCompetitionModal({
                 rules: "",
                 featured: false,
                 requiredSkills: [],
-                allowLateRegistration: false,
-                autoApproveRegistrations: true,
-                registrationFee: "",
-                emailNotifications: true,
-                publicLeaderboard: true,
-                allowTeamRegistration: true,
-                maxTeamSize: 5,
             });
             setCurrentStep(1);
         } catch (error: any) {
@@ -271,7 +259,7 @@ export default function CreateCompetitionModal({
 
     const nextStep = () => {
         if (validateStep(currentStep)) {
-            setCurrentStep(prev => Math.min(prev + 1, 4));
+            setCurrentStep(prev => Math.min(prev + 1, 3));
         } else {
             toast({
                 title: "Thiếu thông tin",
@@ -363,14 +351,20 @@ export default function CreateCompetitionModal({
                 <div className="space-y-2">
                     <Label>Trạng thái *</Label>
                     <Select
-                        value="published"
-                        disabled
+                        value={formData.status}
+                        onValueChange={(value) => handleInputChange("status", value)}
                     >
                         <SelectTrigger>
                             <SelectValue placeholder="Chọn trạng thái" />
                         </SelectTrigger>
                         <SelectContent>
+                            <SelectItem value="draft">Nháp</SelectItem>
                             <SelectItem value="published">Đã xuất bản</SelectItem>
+                            <SelectItem value="registration_open">Mở đăng ký</SelectItem>
+                            <SelectItem value="registration_closed">Đóng đăng ký</SelectItem>
+                            <SelectItem value="in_progress">Đang diễn ra</SelectItem>
+                            <SelectItem value="completed">Hoàn thành</SelectItem>
+                            <SelectItem value="cancelled">Đã hủy</SelectItem>
                         </SelectContent>
                     </Select>
                 </div>
@@ -603,92 +597,6 @@ export default function CreateCompetitionModal({
         </div>
     );
 
-    const renderStep4 = () => (
-        <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Cài đặt cuộc thi</h3>
-
-            <div className="space-y-4">
-                <div className="flex items-center space-x-2">
-                    <Checkbox
-                        id="featured"
-                        checked={formData.featured}
-                        onCheckedChange={(checked) => handleInputChange("featured", checked)}
-                    />
-                    <Label htmlFor="featured">Hiển thị nổi bật</Label>
-                </div>
-
-                <div className="flex items-center space-x-2">
-                    <Checkbox
-                        id="allowLateRegistration"
-                        checked={formData.allowLateRegistration}
-                        onCheckedChange={(checked) => handleInputChange("allowLateRegistration", checked)}
-                    />
-                    <Label htmlFor="allowLateRegistration">Cho phép đăng ký muộn</Label>
-                </div>
-
-                <div className="flex items-center space-x-2">
-                    <Checkbox
-                        id="autoApproveRegistrations"
-                        checked={formData.autoApproveRegistrations}
-                        onCheckedChange={(checked) => handleInputChange("autoApproveRegistrations", checked)}
-                    />
-                    <Label htmlFor="autoApproveRegistrations">Tự động duyệt đăng ký</Label>
-                </div>
-
-                <div className="flex items-center space-x-2">
-                    <Checkbox
-                        id="allowTeamRegistration"
-                        checked={formData.allowTeamRegistration}
-                        onCheckedChange={(checked) => handleInputChange("allowTeamRegistration", checked)}
-                    />
-                    <Label htmlFor="allowTeamRegistration">Cho phép đăng ký theo nhóm</Label>
-                </div>
-
-                {formData.allowTeamRegistration && (
-                    <div className="space-y-2 ml-6">
-                        <Label htmlFor="maxTeamSize">Số thành viên tối đa trong nhóm</Label>
-                        <Input
-                            id="maxTeamSize"
-                            type="number"
-                            min="2"
-                            max="10"
-                            value={formData.maxTeamSize}
-                            onChange={(e) => handleInputChange("maxTeamSize", parseInt(e.target.value))}
-                        />
-                    </div>
-                )}
-
-                <div className="flex items-center space-x-2">
-                    <Checkbox
-                        id="publicLeaderboard"
-                        checked={formData.publicLeaderboard}
-                        onCheckedChange={(checked) => handleInputChange("publicLeaderboard", checked)}
-                    />
-                    <Label htmlFor="publicLeaderboard">Bảng xếp hạng công khai</Label>
-                </div>
-
-                <div className="flex items-center space-x-2">
-                    <Checkbox
-                        id="emailNotifications"
-                        checked={formData.emailNotifications}
-                        onCheckedChange={(checked) => handleInputChange("emailNotifications", checked)}
-                    />
-                    <Label htmlFor="emailNotifications">Gửi thông báo email</Label>
-                </div>
-
-                <div className="space-y-2">
-                    <Label htmlFor="registrationFee">Phí đăng ký (VNĐ)</Label>
-                    <Input
-                        id="registrationFee"
-                        type="number"
-                        placeholder="0"
-                        value={formData.registrationFee}
-                        onChange={(e) => handleInputChange("registrationFee", e.target.value)}
-                    />
-                </div>
-            </div>
-        </div>
-    );
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
@@ -698,11 +606,10 @@ export default function CreateCompetitionModal({
                         Tạo cuộc thi mới
                     </DialogTitle>
                     <DialogDescription>
-                        Bước {currentStep} / 4: {
+                        Bước {currentStep} / 3: {
                             currentStep === 1 ? "Thông tin cơ bản" :
                                 currentStep === 2 ? "Thời gian và địa điểm" :
-                                    currentStep === 3 ? "Yêu cầu và kỹ năng" :
-                                        "Cài đặt cuộc thi"
+                                    "Yêu cầu và kỹ năng"
                         }
                     </DialogDescription>
                 </DialogHeader>
@@ -711,7 +618,7 @@ export default function CreateCompetitionModal({
                 <div className="w-full bg-gray-200 rounded-full h-2">
                     <div
                         className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                        style={{ width: `${(currentStep / 4) * 100}%` }}
+                        style={{ width: `${(currentStep / 3) * 100}%` }}
                     />
                 </div>
 
@@ -720,7 +627,6 @@ export default function CreateCompetitionModal({
                         {currentStep === 1 && renderStep1()}
                         {currentStep === 2 && renderStep2()}
                         {currentStep === 3 && renderStep3()}
-                        {currentStep === 4 && renderStep4()}
                     </div>
                 </ScrollArea>
 
@@ -740,7 +646,7 @@ export default function CreateCompetitionModal({
                             Hủy
                         </Button>
 
-                        {currentStep < 4 ? (
+                        {currentStep < 3 ? (
                             <Button onClick={nextStep}>
                                 Tiếp tục
                             </Button>

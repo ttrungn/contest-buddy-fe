@@ -40,13 +40,7 @@ export default function SearchFilters({
   onFiltersChange,
   onSearch,
 }: SearchFiltersProps) {
-  const [searchQuery, setSearchQuery] = useState("");
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
-
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    onSearch(searchQuery);
-  };
 
   const handleCategoryChange = (category: string, checked: boolean) => {
     const currentCategories = filters.category || [];
@@ -116,20 +110,6 @@ export default function SearchFilters({
 
   return (
     <div className="space-y-4">
-      {/* Search Bar */}
-      <form onSubmit={handleSearch} className="flex gap-2">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Tìm kiếm cuộc thi theo tên, mô tả, kỹ năng..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
-          />
-        </div>
-        <Button type="submit">Tìm kiếm</Button>
-      </form>
-
       {/* Filters */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">

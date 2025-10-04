@@ -52,6 +52,10 @@ export const COMPETITION_REGISTER_ENDPOINT = (id: string) =>
   `${BASE_URL}/api/competitions/${id}/register`;
 export const COMPETITION_PARTICIPANTS_CHECK_ENDPOINT = (id: string) =>
   `${BASE_URL}/api/competitions/${id}/participants/check`;
+export const COMPETITION_UPDATE_ENDPOINT = (id: string) =>
+  `${BASE_URL}/api/competitions/${id}`;
+export const COMPETITION_DELETE_ENDPOINT = (id: string) =>
+  `${BASE_URL}/api/competitions/${id}`;
 
 // User endpoints
 export const USER_TEAMS_ENDPOINT = `${BASE_URL}/api/user/teams`;
