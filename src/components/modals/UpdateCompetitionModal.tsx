@@ -155,10 +155,11 @@ export default function UpdateCompetitionModal({
     };
 
     const addSkill = (skill: string) => {
-        if (!formData.requiredSkills.includes(skill)) {
+        const trimmedSkill = skill.trim();
+        if (trimmedSkill && !formData.requiredSkills.includes(trimmedSkill)) {
             setFormData(prev => ({
                 ...prev,
-                requiredSkills: [...prev.requiredSkills, skill]
+                requiredSkills: [...prev.requiredSkills, trimmedSkill]
             }));
         }
     };
@@ -170,10 +171,11 @@ export default function UpdateCompetitionModal({
         }));
     };
 
-    const filteredSkills = availableSkills.filter(skill =>
-        skill.toLowerCase().includes(skillSearch.toLowerCase()) &&
-        !formData.requiredSkills.includes(skill)
-    );
+    // No longer needed since we're using free-form input like tags
+    // const filteredSkills = availableSkills.filter(skill =>
+    //     skill.toLowerCase().includes(skillSearch.toLowerCase()) &&
+    //     !formData.requiredSkills.includes(skill)
+    // );
 
     const handleSubmit = async () => {
         if (!competition?.id) {
@@ -457,28 +459,27 @@ export default function UpdateCompetitionModal({
 
                             <div className="space-y-2">
                                 <Label>Kỹ năng yêu cầu</Label>
-                                <div className="space-y-2">
+                                <div className="flex gap-2">
                                     <Input
-                                        placeholder="Tìm kiếm kỹ năng..."
+                                        placeholder="Nhập kỹ năng và nhấn Enter"
                                         value={skillSearch}
                                         onChange={(e) => setSkillSearch(e.target.value)}
+                                        onKeyPress={(e) => {
+                                            if (e.key === "Enter") {
+                                                e.preventDefault();
+                                                addSkill(skillSearch);
+                                                setSkillSearch("");
+                                            }
+                                        }}
                                     />
-                                    <ScrollArea className="h-32 border rounded-md p-2">
-                                        <div className="grid grid-cols-2 gap-1">
-                                            {filteredSkills.map((skill) => (
-                                                <Button
-                                                    key={skill}
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    className="justify-start text-xs h-8"
-                                                    onClick={() => addSkill(skill)}
-                                                >
-                                                    <Plus className="h-3 w-3 mr-1" />
-                                                    {skill}
-                                                </Button>
-                                            ))}
-                                        </div>
-                                    </ScrollArea>
+                                    <Button type="button" onClick={() => {
+                                        if (skillSearch.trim()) {
+                                            addSkill(skillSearch);
+                                            setSkillSearch("");
+                                        }
+                                    }} size="sm">
+                                        <Plus className="h-4 w-4" />
+                                    </Button>
                                 </div>
 
                                 {formData.requiredSkills.length > 0 && (

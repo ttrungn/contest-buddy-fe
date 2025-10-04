@@ -1,31 +1,31 @@
 
 import { Route, Routes, Navigate } from "react-router-dom";
 import Index from "../pages/Index";
-import Profile from "../pages/Profile";
-import Calendar from "../pages/Calendar";
-import Competition from "../pages/Competition";
-import Community from "../pages/Community";
-import Teams from "../pages/Teams";
-import CompetitionManagement from "../pages/CompetitionManagement";
-import UserManagement from "../pages/UserManagement";
-import Reports from "../pages/Reports";
-import Analytics from "../pages/Analytics";
-import Login from "../pages/Login";
+import Profile from "../pages/user/Profile";
+import Calendar from "../pages/user/Calendar";
+import Competition from "../pages/competition/Competition";
+import Community from "../pages/user/Community";
+import Teams from "../pages/competition/Teams";
+import CompetitionManagement from "../pages/organizer/CompetitionManagement";
+import UserManagement from "../pages/admin/UserManagement";
+import Reports from "../pages/organizer/Reports";
+import Analytics from "../pages/organizer/Analytics";
+import Login from "../pages/auth/Login";
 import NotFound from "../pages/NotFound";
-import UserDetails from "../pages/UserDetails";
-import TeamDetails from "../pages/TeamDetails";
-import MyCompetitions from "../pages/MyCompetitions";
-import OrganizerBilling from "../pages/OrganizerBilling";
-import OrganizerProfile from "../pages/OrganizerProfile";
-import OrganizerRegister from "../pages/OrganizerRegister";
+import UserDetails from "../pages/user/UserDetails";
+import TeamDetails from "../pages/competition/TeamDetails";
+import MyCompetitions from "../pages/competition/MyCompetitions";
+import OrganizerBilling from "../pages/organizer/OrganizerBilling";
+import OrganizerProfile from "../pages/organizer/OrganizerProfile";
+import OrganizerRegister from "../pages/organizer/OrganizerRegister";
 import About from "../pages/About";
 import Home from "../pages/Home";
-import ProtectedRoute from "../components/ProtectedRoute";
-import EmailVerification from "../pages/EmailVerification";
-import ResendVerification from "../pages/ResendVerification";
-import ForgotPassword from "../pages/ForgotPassword";
-import ResetPassword from "../pages/ResetPassword";
-import Unauthorized from "../pages/Unauthorized";
+import ProtectedRoute from "../components/layout/ProtectedRoute";
+import EmailVerification from "../pages/auth/EmailVerification";
+import ResendVerification from "../pages/auth/ResendVerification";
+import ForgotPassword from "../pages/auth/ForgotPassword";
+import ResetPassword from "../pages/auth/ResetPassword";
+import Unauthorized from "../pages/auth/Unauthorized";
 
 const AppRouter = () => {
     return (
@@ -57,9 +57,23 @@ const AppRouter = () => {
                     </ProtectedRoute>
                 }
             />
-            <Route path="/community" element={<Community />} />
+            <Route 
+                path="/community" 
+                element={
+                    <ProtectedRoute blockedRoles={["organizer"]}>
+                        <Community />
+                    </ProtectedRoute>
+                } 
+            />
             <Route path="/about" element={<About />} />
-            <Route path="/user/:id" element={<UserDetails />} />
+            <Route 
+                path="/user/:id" 
+                element={
+                    <ProtectedRoute blockedRoles={["organizer"]}>
+                        <UserDetails />
+                    </ProtectedRoute>
+                } 
+            />
 
             {/* Auth routes - only accessible when NOT logged in */}
             <Route
@@ -138,7 +152,7 @@ const AppRouter = () => {
             <Route
                 path="/profile"
                 element={
-                    <ProtectedRoute requireAuth>
+                    <ProtectedRoute requireAuth blockedRoles={["organizer"]}>
                         <Profile />
                     </ProtectedRoute>
                 }
@@ -146,7 +160,7 @@ const AppRouter = () => {
             <Route
                 path="/calendar"
                 element={
-                    <ProtectedRoute requireAuth>
+                    <ProtectedRoute requireAuth blockedRoles={["organizer"]}>
                         <Calendar />
                     </ProtectedRoute>
                 }
@@ -154,7 +168,7 @@ const AppRouter = () => {
             <Route
                 path="/teams"
                 element={
-                    <ProtectedRoute requireAuth>
+                    <ProtectedRoute requireAuth blockedRoles={["organizer"]}>
                         <Teams />
                     </ProtectedRoute>
                 }
@@ -162,7 +176,7 @@ const AppRouter = () => {
             <Route
                 path="/teams/:id"
                 element={
-                    <ProtectedRoute requireAuth>
+                    <ProtectedRoute requireAuth blockedRoles={["organizer"]}>
                         <TeamDetails />
                     </ProtectedRoute>
                 }
@@ -170,7 +184,7 @@ const AppRouter = () => {
             <Route
                 path="/my-competitions"
                 element={
-                    <ProtectedRoute requireAuth>
+                    <ProtectedRoute requireAuth blockedRoles={["organizer"]}>
                         <MyCompetitions />
                     </ProtectedRoute>
                 }
@@ -237,7 +251,7 @@ const AppRouter = () => {
             <Route
                 path="/settings"
                 element={
-                    <ProtectedRoute requireAuth>
+                    <ProtectedRoute requireAuth blockedRoles={["organizer"]}>
                         <div className="container py-8">
                             <h1 className="text-2xl font-bold">
                                 Cài đặt - Đang phát triển

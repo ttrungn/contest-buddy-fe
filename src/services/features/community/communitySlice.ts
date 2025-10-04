@@ -78,7 +78,6 @@ export const fetchCommunityProfiles = createAsyncThunk<
       `${CUSTOMER_PROFILES_ENDPOINT}?${queryParams.toString()}`
     );
     
-    console.log("API Response:", response);
     
     // Check if response has data array (actual API structure)
     if (response && response.success && response.data && Array.isArray(response.data)) {

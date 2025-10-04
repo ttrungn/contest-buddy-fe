@@ -7,6 +7,7 @@ import {
   COMPETITIONS_BY_STATUS_ENDPOINT,
   COMPETITION_DETAIL_ENDPOINT,
   COMPETITION_PARTICIPANTS_ENDPOINT,
+  ORGANIZER_COMPETITIONS_ENDPOINT,
 } from "@/services/constant/apiConfig";
 import {
   ApiStatusMessage,
@@ -177,6 +178,27 @@ export const fetchCompetitionsByStatus = createAsyncThunk<
   },
 );
 
+export const fetchOrganizerCompetitions = createAsyncThunk<
+  { data: CompetitionSummary[]; pagination?: Pagination },
+  { page?: number; limit?: number },
+  { rejectValue: string }
+>("competitions/fetchOrganizer", async (params = {}, { rejectWithValue }) => {
+  try {
+    const query = new URLSearchParams();
+    if (params.page) query.set("page", String(params.page));
+    if (params.limit) query.set("limit", String(params.limit));
+    const url = `${ORGANIZER_COMPETITIONS_ENDPOINT}${query.toString() ? `?${query.toString()}` : ""}`;
+    const res = await api.get<ListResponse<CompetitionSummary>>(url);
+    return { data: res.data || [], pagination: res.pagination };
+  } catch (err: any) {
+    return rejectWithValue(
+      err?.response?.data?.message ||
+        err?.message ||
+        "Failed to get organizer competitions",
+    );
+  }
+});
+
 // Detail and participants
 export const fetchCompetitionDetail = createAsyncThunk<
   CompetitionDetail,
@@ -327,6 +349,19 @@ const competitionsSlice = createSlice({
       .addCase(fetchCompetitionsByStatus.fulfilled, (state, action) => {
         state.list = action.payload.data;
         state.pagination = action.payload.pagination || null;
+      })
+      .addCase(fetchOrganizerCompetitions.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(fetchOrganizerCompetitions.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.list = action.payload.data;
+        state.pagination = action.payload.pagination || null;
+      })
+      .addCase(fetchOrganizerCompetitions.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload || "Failed to get organizer competitions";
       })
       .addCase(fetchCompetitionDetail.pending, (state) => {
         state.isLoading = true;
