@@ -69,6 +69,7 @@ export const TEAM_MEMBERS_ENDPOINT = (id: string) =>
 // Teams API endpoints
 export const TEAMS_ENDPOINT = `${BASE_URL}/api/teams`;
 export const TEAM_BY_ID_ENDPOINT = (id: string) => `${BASE_URL}/api/teams/${id}`;
+export const TEAM_LEAVE_ENDPOINT = (teamId: string, memberId: string) => `${BASE_URL}/api/teams/${teamId}/members/${memberId}`;
 export const USER_INVITATIONS_ENDPOINT = `${BASE_URL}/api/user/invitations`;
 
 // Team Invitations API endpoints

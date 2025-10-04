@@ -53,6 +53,7 @@ import {
   deleteTeam,
   acceptTeamInvitation,
   rejectTeamInvitation,
+  leaveTeam,
 } from "@/services/features/teams/teamsSlice";
 import { Team, TeamInvitation, CreateTeamRequest, UpdateTeamRequest } from "@/interfaces/ITeam";
 import { cn } from "@/lib/utils";
@@ -269,6 +270,33 @@ export default function Teams() {
     }
   };
 
+  const handleLeaveTeam = async (team: Team) => {
+    if (!user?.id) {
+      toast({
+        title: "Lỗi",
+        description: "Không tìm thấy thông tin người dùng",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      await dispatch(leaveTeam({ teamId: team.id, memberId: user.id })).unwrap();
+      toast({
+        title: "Thành công",
+        description: "Đã rời khỏi nhóm thành công",
+      });
+      // Refresh teams list
+      dispatch(getUserTeams());
+    } catch (error) {
+      toast({
+        title: "Lỗi",
+        description: "Không thể rời khỏi nhóm",
+        variant: "destructive",
+      });
+    }
+  };
+
 
   const TeamCard = ({ team }: { team: Team }) => {
     const isLeader = team.leader_id === user?.id;
@@ -366,7 +394,12 @@ export default function Teams() {
                   </>
                 )}
                 {!isLeader && (
-                  <DropdownMenuItem onClick={(e) => e.stopPropagation()}>
+                  <DropdownMenuItem 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleLeaveTeam(team);
+                    }}
+                  >
                     <UserPlus className="h-4 w-4 mr-2" />
                     Rời nhóm
                   </DropdownMenuItem>
