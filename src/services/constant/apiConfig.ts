@@ -18,7 +18,8 @@ export const CHANGE_PASSWORD_ENDPOINT = `${BASE_URL}/api/auth/change-password`;
 // Customer profile endpoints
 export const CUSTOMER_PROFILES_ENDPOINT = `${BASE_URL}/api/customers`;
 export const CUSTOMER_PROFILE_ENDPOINT = `${BASE_URL}/api/customer/profile`;
-export const CUSTOMER_DETAIL_ENDPOINT = (userId: string) => `${BASE_URL}/api/customer/${userId}`;
+export const CUSTOMER_DETAIL_ENDPOINT = (userId: string) =>
+  `${BASE_URL}/api/customer/${userId}`;
 export const CUSTOMER_AVATAR_ENDPOINT = `${BASE_URL}/api/customer/avatar`;
 
 // User skills endpoints
@@ -69,19 +70,40 @@ export const TEAM_MEMBERS_ENDPOINT = (id: string) =>
 
 // Teams API endpoints
 export const TEAMS_ENDPOINT = `${BASE_URL}/api/teams`;
-export const TEAM_BY_ID_ENDPOINT = (id: string) => `${BASE_URL}/api/teams/${id}`;
-export const TEAM_LEAVE_ENDPOINT = (teamId: string, memberId: string) => `${BASE_URL}/api/teams/${teamId}/members/${memberId}`;
+export const TEAM_BY_ID_ENDPOINT = (id: string) =>
+  `${BASE_URL}/api/teams/${id}`;
+export const TEAM_LEAVE_ENDPOINT = (teamId: string, memberId: string) =>
+  `${BASE_URL}/api/teams/${teamId}/members/${memberId}`;
 export const USER_INVITATIONS_ENDPOINT = `${BASE_URL}/api/user/invitations`;
 
 // Team Invitations API endpoints
 export const TEAM_INVITATIONS_ENDPOINT = `${BASE_URL}/api/team-invitations`;
-export const TEAM_INVITATION_ACCEPT_ENDPOINT = (invitationId: string) => `${BASE_URL}/api/team-invitations/${invitationId}/accept`;
-export const TEAM_INVITATION_REJECT_ENDPOINT = (invitationId: string) => `${BASE_URL}/api/team-invitations/${invitationId}/reject`;
-export const TEAM_INVITATION_CANCEL_ENDPOINT = (invitationId: string) => `${BASE_URL}/api/team-invitations/${invitationId}/cancel`;
+export const TEAM_INVITATION_ACCEPT_ENDPOINT = (invitationId: string) =>
+  `${BASE_URL}/api/team-invitations/${invitationId}/accept`;
+export const TEAM_INVITATION_REJECT_ENDPOINT = (invitationId: string) =>
+  `${BASE_URL}/api/team-invitations/${invitationId}/reject`;
+export const TEAM_INVITATION_CANCEL_ENDPOINT = (invitationId: string) =>
+  `${BASE_URL}/api/team-invitations/${invitationId}/cancel`;
 
 // Team Member Management API endpoints
-export const TEAM_MEMBER_ROLE_ENDPOINT = (teamId: string, memberId: string) => `${BASE_URL}/api/teams/${teamId}/members/${memberId}/role`;
-export const TEAM_MEMBER_DELETE_ENDPOINT = (teamId: string, memberId: string) => `${BASE_URL}/api/teams/${teamId}/members/${memberId}`;
+export const TEAM_MEMBER_ROLE_ENDPOINT = (teamId: string, memberId: string) =>
+  `${BASE_URL}/api/teams/${teamId}/members/${memberId}/role`;
+export const TEAM_MEMBER_DELETE_ENDPOINT = (teamId: string, memberId: string) =>
+  `${BASE_URL}/api/teams/${teamId}/members/${memberId}`;
 
 // Plans
 export const PLANS_ENDPOINT = `${BASE_URL}/api/plans`;
+
+// Chat API endpoints
+export const CHAT_CONVERSATIONS_ENDPOINT = `${BASE_URL}/api/chat/conversations`;
+export const CHAT_CONVERSATIONS_DIRECT_ENDPOINT = `${BASE_URL}/api/chat/conversations/direct`;
+export const CHAT_CONVERSATION_ENDPOINT = (conversationId: string) =>
+  `${BASE_URL}/api/chat/conversations/${conversationId}`;
+export const CHAT_MESSAGES_ENDPOINT = (conversationId: string) =>
+  `${BASE_URL}/api/chat/conversations/${conversationId}/messages`;
+export const CHAT_MARK_READ_ENDPOINT = (conversationId: string) =>
+  `${BASE_URL}/api/chat/conversations/${conversationId}/read`;
+
+// Socket.IO endpoints
+export const CHAT_WEBSOCKET_ENDPOINT = (token: string) =>
+  `https://contest-buddy-be-594444870778.asia-southeast1.run.app`;

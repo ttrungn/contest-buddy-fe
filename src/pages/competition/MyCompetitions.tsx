@@ -16,12 +16,12 @@ import { USER_PARTICIPATED_COMPETITIONS_ENDPOINT } from "@/services/constant/api
 export default function MyCompetitions() {
   const navigate = useNavigate();
   const { toast } = useToast();
-  
+
   // State for API data
   const [participatedCompetitions, setParticipatedCompetitions] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+
   // Mock current user (in real app, this would come from auth context)
   const currentUser = { id: "1" };
 
@@ -31,7 +31,7 @@ export default function MyCompetitions() {
     setError(null);
     try {
       const response = await api.get(USER_PARTICIPATED_COMPETITIONS_ENDPOINT);
-      
+
       // Handle the API response structure from your example
       if (response && response.success && response.data) {
         setParticipatedCompetitions(response.data);
@@ -127,13 +127,6 @@ export default function MyCompetitions() {
     navigate("/");
   };
 
-  // Debug logging
-  console.log("Render state:", { 
-    isLoading, 
-    error, 
-    participatedCompetitions: participatedCompetitions.length,
-    registeredCompetitions: registeredCompetitions.length 
-  });
 
   return (
     <div className="min-h-screen bg-background">
@@ -189,7 +182,7 @@ export default function MyCompetitions() {
                 {registeredCompetitions.map((item) => {
                   const competition = item.competition;
                   const participation = item.participation;
-                  
+
                   return (
                     <Card key={competition.id} className="card-hover h-full flex flex-col">
                       <div className="relative">
