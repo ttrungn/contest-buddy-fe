@@ -9,11 +9,21 @@ import organizerReducer from "../features/organizer/organizerSlice";
 import competitionsReducer from "../features/competitions/competitionsSlice";
 import plansReducer from "../features/plans/plansSlice";
 import teamsReducer from "../features/teams/teamsSlice";
+import chatReducer from "../features/chat/chatSlice";
 
 const presistConfig = {
   key: "root",
   storage,
-  whitelist: ["auth", "teams", "user", "community", "organizer", "competitions", "plans"],
+  whitelist: [
+    "auth",
+    "teams",
+    "user",
+    "community",
+    "organizer",
+    "competitions",
+    "plans",
+    "chat",
+  ],
 };
 
 // Create a hook for using TypedUseSelectorHook
@@ -25,6 +35,7 @@ const rootReducer = combineReducers({
   competitions: competitionsReducer,
   plans: plansReducer,
   teams: teamsReducer,
+  chat: chatReducer,
 });
 
 const persistedReducer = persistReducer(presistConfig, rootReducer);

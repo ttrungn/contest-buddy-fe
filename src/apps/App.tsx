@@ -12,7 +12,7 @@ import { UserRoleProvider } from "../contexts/UserRoleContext";
 import { ChatProvider } from "../contexts/ChatContext";
 import { BalanceProvider } from "../contexts/BalanceContext";
 import Navbar from "../components/layout/Navbar";
-import Chat from "../components/Chat";
+import ChatUpdated from "../components/ChatUpdated";
 import Footer from "../components/layout/Footer";
 import AppRouter from "../routers";
 import { useAppSelector } from "@/services/store/store";
@@ -54,7 +54,7 @@ const LayoutWrapper = () => {
             <AppRouter />
           </div>
         </main>
-        {!userIsOrganizer && <Chat />}
+        {!userIsOrganizer && <ChatUpdated />}
       </div>
       <Footer />
     </>

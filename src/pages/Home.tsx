@@ -15,6 +15,7 @@ import { fetchCommunityProfiles } from "@/services/features/community/communityS
 import { CommunityUser } from "@/interfaces/ICommunity";
 import { useEffect } from "react";
 
+
 function UserCard({ user }: { user: CommunityUser }) {
   const navigate = useNavigate();
   return (
@@ -86,12 +87,12 @@ export default function Home() {
   const { isAuthenticated } = useAppSelector((state) => state.auth);
   const { featured } = useAppSelector((s) => s.competitions);
   const { users: communityUsers } = useAppSelector((s) => s.community);
-  
+
   useEffect(() => {
     dispatch(fetchFeaturedCompetitions({ page: 1, limit: 6 }));
     dispatch(fetchCommunityProfiles({ page: 1, limit: 3 }));
   }, [dispatch]);
-  
+
   const competitions = featured.slice(0, 6).map((c) => ({
     id: c.id,
     title: c.title,
@@ -111,7 +112,7 @@ export default function Home() {
     status: "upcoming" as any,
     imageUrl: (c as any).image_url || (c as any).imageUrl,
   }));
-  
+
   const users = communityUsers.slice(0, 3);
 
   return (
@@ -315,6 +316,7 @@ export default function Home() {
             </div>
           </section>
         )}
+
       </div>
     </div>
   );

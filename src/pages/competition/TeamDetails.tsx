@@ -24,24 +24,24 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { RemoveMemberModal } from "@/components/modals";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuItem, 
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuTrigger,
-  DropdownMenuSeparator 
+  DropdownMenuSeparator
 } from "@/components/ui/dropdown-menu";
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
 } from "@/components/ui/select";
 import { useAppDispatch, useAppSelector } from "@/services/store/store";
-import { 
-  getTeamById, 
-  getTeamMembers, 
+import {
+  getTeamById,
+  getTeamMembers,
   clearTeamsError,
   changeMemberRole,
   removeTeamMember,
@@ -55,11 +55,11 @@ export default function TeamDetails() {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const { toast } = useToast();
-  
+
   // Redux state
   const { currentTeam, teamMembers, isLoading, error } = useAppSelector((state) => state.teams);
   const { user } = useAppSelector((state) => state.auth);
-  
+
   // Local state
   const [editMember, setEditMember] = useState<TeamMember | null>(null);
   const [editData, setEditData] = useState<any>({});
@@ -129,7 +129,6 @@ export default function TeamDetails() {
   // Xử lý lưu chỉnh sửa
   const handleSave = () => {
     // TODO: Implement API call to update member
-    console.log("Update member:", editData);
     setEditMember(null);
   };
 
@@ -139,19 +138,19 @@ export default function TeamDetails() {
   // Handle change member role
   const handleChangeRole = async (memberId: string, newRole: TeamRole) => {
     if (!currentTeam) return;
-    
+
     try {
       await dispatch(changeMemberRole({
         teamId: currentTeam.id,
         memberId,
         roleData: { role: newRole }
       })).unwrap();
-      
+
       toast({
         title: "Thành công",
         description: "Đã thay đổi vai trò thành viên",
       });
-      
+
       // Refresh team members
       dispatch(getTeamMembers(currentTeam.id));
     } catch (error) {
@@ -162,19 +161,19 @@ export default function TeamDetails() {
   // Handle remove member
   const handleRemoveMember = async () => {
     if (!currentTeam || !memberToRemove) return;
-    
+
     setIsRemovingMember(true);
     try {
       await dispatch(removeTeamMember({
         teamId: currentTeam.id,
         memberId: memberToRemove.user.id
       })).unwrap();
-      
+
       toast({
         title: "Thành công",
         description: "Đã xóa thành viên khỏi nhóm",
       });
-      
+
       // State is automatically updated by Redux reducer
       setIsRemoveMemberOpen(false);
       setMemberToRemove(null);
@@ -188,15 +187,15 @@ export default function TeamDetails() {
   // Handle delete team
   const handleDeleteTeam = async () => {
     if (!currentTeam) return;
-    
+
     try {
       await dispatch(deleteTeam(currentTeam.id)).unwrap();
-      
+
       toast({
         title: "Thành công",
         description: "Đã xóa nhóm",
       });
-      
+
       // Navigate back to teams list
       navigate("/teams");
     } catch (error) {
@@ -308,7 +307,7 @@ export default function TeamDetails() {
                               Hạ xuống Member
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem 
+                            <DropdownMenuItem
                               className="text-red-600"
                               onClick={() => {
                                 setMemberToRemove(member);
