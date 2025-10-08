@@ -9,7 +9,6 @@ import {
   Star,
   Zap,
   Target,
-  Search,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -37,7 +36,7 @@ export default function Index() {
 
   // Simple filter state (no URL synchronization)
   const [filters, setFilters] = useState<CompetitionFilters>({});
-  const [searchQuery, setSearchQuery] = useState("");
+  // Removed top-level search input; SearchFilters contains the search box
 
   // Debounced API call function
   const debouncedFetchCompetitions = useCallback(
@@ -59,7 +58,7 @@ export default function Index() {
       limit: 30,
       ...filters,
     }));
-    
+
     // Load featured competitions
     dispatch(fetchFeaturedCompetitions({ page: 1, limit: 12 }));
   }, [dispatch, filters.category, filters.status, filters.level, filters.start_date, filters.end_date, filters.location, filters.isOnline, filters.prizePool]);
@@ -101,12 +100,53 @@ export default function Index() {
   });
 
   // Use API data directly (no client-side filtering)
-  const competitions = (list || []).map(mapToCard);
+  // Normalize status from API (supports Vietnamese labels)
+  const normalizeStatus = (status: string | undefined | null): string => {
+    if (!status) return "draft";
+    const raw = String(status);
+    const lower = raw.toLowerCase();
+    const known = [
+      "draft",
+      "published",
+      "registration_open",
+      "registration_closed",
+      "in_progress",
+      "ongoing",
+      "completed",
+      "cancelled",
+    ];
+    if (known.includes(lower)) return lower;
+    switch (raw) {
+      case "Bản nháp":
+        return "draft";
+      case "Đã công bố":
+        return "published";
+      case "Đang mở đăng ký":
+        return "registration_open";
+      case "Đã đóng đăng ký":
+        return "registration_closed";
+      case "Đang diễn ra":
+        return "in_progress";
+      case "Đã hoàn thành":
+      case "Hoàn thành":
+        return "completed";
+      case "Đã hủy":
+        return "cancelled";
+      default:
+        return lower;
+    }
+  };
+
+  const competitions = (list || []).map((c: any) => {
+    const mapped = mapToCard(c) as any;
+    mapped.status = normalizeStatus(c.status) as any;
+    return mapped as any;
+  });
   const featuredCompetitions = (featured || []).map(mapToCard);
-  
+
   // Filter featured and status-based competitions from API data
   const upcomingCompetitions = competitions.filter((comp: any) => comp.status === "registration_open");
-  const ongoingCompetitions = competitions.filter((comp: any) => comp.status === "in_progress");
+  const ongoingCompetitions = competitions.filter((comp: any) => comp.status === "in_progress" || comp.status === "ongoing");
 
   const stats = [
     {
@@ -217,22 +257,7 @@ export default function Index() {
               </div>
 
               <TabsContent value="all" className="space-y-6">
-                {/* Search Input */}
-                <div className="flex gap-4 items-center">
-                  <div className="relative flex-1 max-w-md">
-                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                    <input
-                      type="text"
-                      placeholder="Tìm kiếm cuộc thi..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full pl-10 pr-4 py-2 border border-input bg-background rounded-md text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                    />
-                  </div>
-                  <div className="text-sm text-muted-foreground">
-                    {isLoading ? "Đang tải..." : `${competitions.length} cuộc thi`}
-                  </div>
-                </div>
+                {/* Search input removed - SearchFilters handles searching */}
 
                 <SearchFilters
                   filters={filters}
@@ -257,9 +282,8 @@ export default function Index() {
                     </p>
                     <Button
                       onClick={() => {
-                        const clearedFilters = {};
+                        const clearedFilters = {} as any;
                         setFilters(clearedFilters);
-                        setSearchQuery("");
                         handleFiltersChange(clearedFilters);
                       }}
                     >

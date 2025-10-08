@@ -66,6 +66,45 @@ export default function CompetitionManagementPage() {
     dispatch(fetchOrganizerCompetitions({ page: 1, limit: 50 }));
   }, [dispatch]);
 
+  // Normalize status coming from API (supports Vietnamese labels or code strings)
+  const normalizeStatus = (status: string | undefined | null): string => {
+    if (!status) return "draft";
+    const raw = String(status);
+    const lower = raw.toLowerCase();
+    // If already our internal codes
+    const codeMatches = [
+      "draft",
+      "published",
+      "registration_open",
+      "registration_closed",
+      "in_progress",
+      "ongoing",
+      "completed",
+      "cancelled",
+    ];
+    if (codeMatches.includes(lower)) return lower;
+    // Map Vietnamese labels to codes
+    switch (raw) {
+      case "Bản nháp":
+        return "draft";
+      case "Đã công bố":
+        return "published";
+      case "Đang mở đăng ký":
+        return "registration_open";
+      case "Đã đóng đăng ký":
+        return "registration_closed";
+      case "Đang diễn ra":
+        return "in_progress";
+      case "Đã hoàn thành":
+      case "Hoàn thành":
+        return "completed";
+      case "Đã hủy":
+        return "cancelled";
+      default:
+        return lower;
+    }
+  };
+
   // Convert API data to CompetitionManagement format
   const competitions = list
     .filter((comp) => comp && comp.id) // Filter out null/undefined items
@@ -206,20 +245,33 @@ export default function CompetitionManagementPage() {
   };
 
   const getCompetitionStatusLabel = (status: string) => {
-    switch (status) {
+    // If already a Vietnamese label, return it
+    const viLabels = [
+      "Bản nháp",
+      "Đã công bố",
+      "Đang mở đăng ký",
+      "Đã đóng đăng ký",
+      "Đang diễn ra",
+      "Đã hoàn thành",
+      "Hoàn thành",
+      "Đã hủy",
+    ];
+    if (viLabels.includes(status)) return status;
+
+    switch (normalizeStatus(status)) {
       case "draft":
-        return "Nháp";
+        return "Bản nháp";
       case "published":
-        return "Đã xuất bản";
+        return "Đã công bố";
       case "registration_open":
-        return "Mở đăng ký";
+        return "Đang mở đăng ký";
       case "registration_closed":
-        return "Đóng đăng ký";
+        return "Đã đóng đăng ký";
       case "in_progress":
       case "ongoing":
         return "Đang diễn ra";
       case "completed":
-        return "Hoàn thành";
+        return "Đã hoàn thành";
       case "cancelled":
         return "Đã hủy";
       default:
@@ -228,7 +280,7 @@ export default function CompetitionManagementPage() {
   };
 
   const getCompetitionStatusColor = (status: string) => {
-    switch (status) {
+    switch (normalizeStatus(status)) {
       case "draft":
         return "bg-gray-100 text-gray-700";
       case "published":
@@ -302,21 +354,21 @@ export default function CompetitionManagementPage() {
 
     try {
       await dispatch(deleteCompetition(competitionToDelete.competitionId)).unwrap();
-      
+
       // Show success toast
       toast({
         title: "Thành công!",
         description: "Cuộc thi đã được xóa thành công",
       });
-      
+
       // Clear the selected competition if it's the one being deleted
       if (selectedCompetition && selectedCompetition.competitionId === competitionToDelete.competitionId) {
         setSelectedCompetition(null);
       }
-      
+
       // Reset delete-related states
       resetDeleteStates();
-      
+
       // Note: No need to fetch competitions again as Redux slice already updates the list
     } catch (error: any) {
       toast({
@@ -335,10 +387,10 @@ export default function CompetitionManagementPage() {
       title: "Thành công!",
       description: "Cuộc thi đã được cập nhật thành công",
     });
-    
+
     // Refresh the competitions list
     dispatch(fetchOrganizerCompetitions({ page: 1, limit: 50 }));
-    
+
     setIsUpdateModalOpen(false);
     setCompetitionToUpdate(null);
   };
@@ -591,8 +643,8 @@ export default function CompetitionManagementPage() {
                     <Eye className="h-4 w-4 mr-1" />
                     Xem trang thi
                   </Button>
-                  <Button 
-                    variant="outline" 
+                  <Button
+                    variant="outline"
                     size="sm"
                     onClick={() => handleUpdateCompetition(selectedCompetition)}
                   >
@@ -611,7 +663,7 @@ export default function CompetitionManagementPage() {
                         Chỉnh sửa
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem 
+                      <DropdownMenuItem
                         className="text-red-600"
                         onClick={() => handleDeleteCompetition(selectedCompetition)}
                       >

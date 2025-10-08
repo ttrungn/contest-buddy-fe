@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import {
   Search,
   Filter,
@@ -32,14 +32,7 @@ import { Separator } from "@/components/ui/separator";
 import { CompetitionFilters, CompetitionConstants } from "@/types";
 import { COMPETITIONS_CONSTANTS_ENDPOINT } from "@/services/constant/apiConfig";
 
-// Debounce utility function
-const debounce = (func: Function, delay: number) => {
-  let timeoutId: NodeJS.Timeout;
-  return (...args: any[]) => {
-    clearTimeout(timeoutId);
-    timeoutId = setTimeout(() => func.apply(null, args), delay);
-  };
-};
+// (debounce not needed here; parent handles debouncing API calls)
 
 interface SearchFiltersProps {
   filters: CompetitionFilters;
@@ -99,29 +92,11 @@ export default function SearchFilters({
     setLocalFilters(filters);
   }, [filters]);
 
-  // Debounced search function
-  const debouncedSearch = useCallback(
-    debounce((searchValue: string) => {
-      const updatedFilters = { ...localFilters, search: searchValue };
-      onFiltersChange(updatedFilters);
-    }, 500),
-    [localFilters, onFiltersChange]
-  );
-
   // Apply filters immediately for non-text inputs
   const applyFilters = (newFilters: Partial<CompetitionFilters>) => {
     const updatedFilters = { ...localFilters, ...newFilters };
     setLocalFilters(updatedFilters);
     onFiltersChange(updatedFilters);
-  };
-
-  // Apply text search with debouncing
-  const applyTextSearch = (newFilters: Partial<CompetitionFilters>) => {
-    const updatedFilters = { ...localFilters, ...newFilters };
-    setLocalFilters(updatedFilters);
-    if (newFilters.search !== undefined) {
-      debouncedSearch(newFilters.search);
-    }
   };
 
   // Clear all filters
@@ -151,7 +126,7 @@ export default function SearchFilters({
     const newValues = checked
       ? [...currentValues, value]
       : currentValues.filter((v) => v !== value);
-    
+
     applyFilters({ [field]: newValues });
   };
 
@@ -186,7 +161,7 @@ export default function SearchFilters({
         <div className="flex gap-4">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input placeholder="Đang tải..." disabled className="pl-10" />
+            <Input placeholder="Đang tải..." value="" disabled className="pl-10" />
           </div>
           <Button disabled>Đang tải...</Button>
         </div>
@@ -203,17 +178,17 @@ export default function SearchFilters({
           <Input
             placeholder="Tìm kiếm cuộc thi theo tên, mô tả, kỹ năng..."
             value={localFilters.search || ""}
-            onChange={(e) => applyTextSearch({ search: e.target.value })}
+            onChange={(e) => applyFilters({ search: e.target.value })}
             className="pl-10"
           />
         </div>
-        
+
         {/* Quick Status Filter */}
         <Select
-          value={localFilters.status?.includes("REGISTRATION_OPEN") ? "open" : "all"}
+          value={localFilters.status?.includes("Đang mở đăng ký") ? "open" : "all"}
           onValueChange={(value) => {
             if (value === "open") {
-              applyFilters({ status: ["REGISTRATION_OPEN"] });
+              applyFilters({ status: ["Đang mở đăng ký"] });
             } else {
               applyFilters({ status: [] });
             }
@@ -241,7 +216,7 @@ export default function SearchFilters({
             </Badge>
           )}
         </Button>
-        
+
         <Button
           variant="outline"
           onClick={clearAllFilters}
@@ -274,9 +249,9 @@ export default function SearchFilters({
                     <div key={key} className="flex items-center space-x-2">
                       <Checkbox
                         id={`category-${key}`}
-                        checked={localFilters.category?.includes(key) || false}
+                        checked={localFilters.category?.includes(label) || false}
                         onCheckedChange={(checked) =>
-                          handleMultiSelectChange('category', key, checked as boolean)
+                          handleMultiSelectChange('category', label, checked as boolean)
                         }
                       />
                       <Label htmlFor={`category-${key}`} className="text-sm">
@@ -300,9 +275,9 @@ export default function SearchFilters({
                     <div key={key} className="flex items-center space-x-2">
                       <Checkbox
                         id={`level-${key}`}
-                        checked={localFilters.level?.includes(key) || false}
+                        checked={localFilters.level?.includes(label) || false}
                         onCheckedChange={(checked) =>
-                          handleMultiSelectChange('level', key, checked as boolean)
+                          handleMultiSelectChange('level', label, checked as boolean)
                         }
                       />
                       <Label htmlFor={`level-${key}`} className="text-sm">
@@ -326,9 +301,9 @@ export default function SearchFilters({
                     <div key={key} className="flex items-center space-x-2">
                       <Checkbox
                         id={`status-${key}`}
-                        checked={localFilters.status?.includes(key) || false}
+                        checked={localFilters.status?.includes(label) || false}
                         onCheckedChange={(checked) =>
-                          handleMultiSelectChange('status', key, checked as boolean)
+                          handleMultiSelectChange('status', label, checked as boolean)
                         }
                       />
                       <Label htmlFor={`status-${key}`} className="text-sm">
@@ -381,7 +356,7 @@ export default function SearchFilters({
                     <Input
                       placeholder="Hà Nội, TP. HCM..."
                       value={localFilters.location || ""}
-                      onChange={(e) => applyTextSearch({ location: e.target.value })}
+                      onChange={(e) => applyFilters({ location: e.target.value })}
                     />
                   </div>
                   <div className="flex items-center space-x-4 pt-6">
@@ -424,11 +399,11 @@ export default function SearchFilters({
           <span className="text-sm text-muted-foreground">
             Bộ lọc đang áp dụng:
           </span>
-          
+
           {/* Category filters */}
           {localFilters.category?.map((category) => (
             <Badge key={`cat-${category}`} variant="secondary" className="gap-1">
-              {constants?.categories[category] || category}
+              {category}
               <X
                 className="h-3 w-3 cursor-pointer"
                 onClick={() => removeFilter('category', category)}
@@ -439,7 +414,7 @@ export default function SearchFilters({
           {/* Status filters */}
           {localFilters.status?.map((status) => (
             <Badge key={`status-${status}`} variant="secondary" className="gap-1">
-              {constants?.statuses[status] || status}
+              {status}
               <X
                 className="h-3 w-3 cursor-pointer"
                 onClick={() => removeFilter('status', status)}
@@ -450,7 +425,7 @@ export default function SearchFilters({
           {/* Level filters */}
           {localFilters.level?.map((level) => (
             <Badge key={`level-${level}`} variant="secondary" className="gap-1">
-              {constants?.levels[level] || level}
+              {level}
               <X
                 className="h-3 w-3 cursor-pointer"
                 onClick={() => removeFilter('level', level)}
@@ -468,7 +443,7 @@ export default function SearchFilters({
               />
             </Badge>
           )}
-          
+
           {localFilters.end_date && (
             <Badge variant="secondary" className="gap-1">
               Đến: {localFilters.end_date}
