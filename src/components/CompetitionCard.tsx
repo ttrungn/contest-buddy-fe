@@ -79,6 +79,36 @@ export default function CompetitionCard({
     }
   };
 
+  const getLevelBadge = () => {
+    const level = (competition.level || "").toString();
+    switch (level) {
+      case "beginner":
+        return (
+          <Badge className="bg-purple-100 text-purple-700 border-purple-200 text-xs">
+            beginner
+          </Badge>
+        );
+      case "intermediate":
+        return (
+          <Badge className="bg-amber-100 text-amber-700 border-amber-200 text-xs">
+            intermediate
+          </Badge>
+        );
+      case "expert":
+        return (
+          <Badge className="bg-red-100 text-red-700 border-red-200 text-xs">
+            expert
+          </Badge>
+        );
+      default:
+        return (
+          <Badge variant="outline" className="text-xs">
+            {level || "level"}
+          </Badge>
+        );
+    }
+  };
+
   const getCategoryIcon = () => {
     const iconMap: Record<string, string> = {
       programming: "💻",
@@ -184,14 +214,6 @@ export default function CompetitionCard({
               <Badge variant="secondary" className="text-xs">
                 {competition.category}
               </Badge>
-              <Badge
-                variant={
-                  competition.level === "expert" ? "destructive" : "outline"
-                }
-                className="text-xs"
-              >
-                {competition.level}
-              </Badge>
             </div>
             <h3 className="font-bold text-lg mb-2 group-hover:text-primary transition-colors text-left">
               {competition.title}
@@ -200,7 +222,10 @@ export default function CompetitionCard({
               {competition.description}
             </p>
           </div>
-          {getStatusBadge()}
+          <div className="flex flex-col items-end gap-1">
+            {getStatusBadge()}
+            {getLevelBadge()}
+          </div>
         </div>
       </CardHeader>
 

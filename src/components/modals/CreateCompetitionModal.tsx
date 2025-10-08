@@ -23,13 +23,14 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
-import { Competition } from "@/types";
+import { Competition, CompetitionConstants } from "@/types";
 import { CompetitionCategory, CompetitionLevel, CompetitionStatus } from "@/interfaces/ICompetition";
 import { useAppDispatch, useAppSelector } from "@/services/store/store";
 import { createCompetition } from "@/services/features/competitions/competitionsSlice";
 import { fetchPlans } from "@/services/features/plans/plansSlice";
 import { CreateCompetitionRequest } from "@/interfaces/ICompetition";
 import { Plan } from "@/interfaces/IPlan";
+import { COMPETITIONS_CONSTANTS_ENDPOINT } from "@/services/constant/apiConfig";
 
 interface CreateCompetitionModalProps {
     isOpen: boolean;
@@ -37,21 +38,7 @@ interface CreateCompetitionModalProps {
     onSuccess?: (competition: Partial<Competition>) => void;
 }
 
-const categories: { value: CompetitionCategory; label: string }[] = [
-    { value: "hackathon", label: "Hackathon" },
-    { value: "datathon", label: "Datathon" },
-    { value: "designathon", label: "Designathon" },
-    { value: "business_case", label: "Business Case" },
-    { value: "coding_contest", label: "Coding Contest" },
-    { value: "other", label: "Khác" },
-];
-
-const levels: { value: CompetitionLevel; label: string }[] = [
-    { value: "beginner", label: "Cơ bản" },
-    { value: "intermediate", label: "Trung bình" },
-    { value: "advanced", label: "Nâng cao" },
-    { value: "all_levels", label: "Tất cả cấp độ" },
-];
+// Options are fetched from API constants
 
 const availableSkills = [
     "React", "Vue.js", "Angular", "Node.js", "Python", "Java", "C++", "C#",
@@ -74,11 +61,15 @@ export default function CreateCompetitionModal({
     const [isLoading, setIsLoading] = useState(false);
     const [currentStep, setCurrentStep] = useState(1);
 
+    const [constants, setConstants] = useState<CompetitionConstants | null>(null);
+    const [isConstantsLoading, setIsConstantsLoading] = useState(false);
+
     const [formData, setFormData] = useState({
         title: "",
         description: "",
-        category: "" as CompetitionCategory,
-        status: "draft" as CompetitionStatus,
+        // Store lowercase values expected by backend (e.g., "hackathon", "beginner", "draft")
+        category: "" as unknown as string,
+        status: "draft" as unknown as string,
         planId: "",
         startDate: "",
         endDate: "",
@@ -88,7 +79,7 @@ export default function CreateCompetitionModal({
         maxParticipants: "",
         isRegisteredAsTeam: false,
         maxParticipantsPerTeam: 4,
-        level: "" as CompetitionLevel,
+        level: "" as unknown as string,
         tags: [] as string[],
         imageUrl: "",
         website: "",
@@ -100,11 +91,28 @@ export default function CreateCompetitionModal({
     const [newTag, setNewTag] = useState("");
     const [skillSearch, setSkillSearch] = useState("");
 
-    // Fetch plans when modal opens
+    // Fetch plans and constants when modal opens
     useEffect(() => {
-        if (isOpen && plans.length === 0) {
-            dispatch(fetchPlans());
-        }
+        const doFetch = async () => {
+            try {
+                if (plans.length === 0) {
+                    dispatch(fetchPlans());
+                }
+                setIsConstantsLoading(true);
+                const res = await fetch(COMPETITIONS_CONSTANTS_ENDPOINT);
+                const json = await res.json();
+                if (json?.status === "success" && json?.data) {
+                    setConstants(json.data as CompetitionConstants);
+                } else {
+                    setConstants(null);
+                }
+            } catch (e) {
+                setConstants(null);
+            } finally {
+                setIsConstantsLoading(false);
+            }
+        };
+        if (isOpen) doFetch();
     }, [isOpen, dispatch, plans.length]);
 
     const handleInputChange = (field: string, value: any) => {
@@ -186,11 +194,18 @@ export default function CreateCompetitionModal({
         setIsLoading(true);
 
         try {
-            // Prepare API request
+            // Map selected keys to Vietnamese labels from constants for payload
+            const mapToLabel = (dict?: Record<string, string>, value?: string) => {
+                if (!dict || !value) return value as any;
+                const found = Object.entries(dict).find(([k]) => k.toLowerCase() === String(value).toLowerCase());
+                return (found ? found[1] : value) as any;
+            };
+
             const createRequest: CreateCompetitionRequest = {
                 title: formData.title,
                 description: formData.description,
-                category: formData.category,
+                // send Vietnamese label strings
+                category: mapToLabel(constants?.categories, formData.category),
                 plan_id: formData.planId,
                 start_date: new Date(formData.startDate).toISOString(),
                 end_date: new Date(formData.endDate).toISOString(),
@@ -201,12 +216,12 @@ export default function CreateCompetitionModal({
                 isRegisteredAsTeam: formData.isRegisteredAsTeam,
                 // Only include maxParticipantsPerTeam if isRegisteredAsTeam is true
                 ...(formData.isRegisteredAsTeam && { maxParticipantsPerTeam: formData.maxParticipantsPerTeam }),
-                level: formData.level,
+                level: mapToLabel(constants?.levels, formData.level),
                 image_url: formData.imageUrl || undefined,
                 website: formData.website || undefined,
                 rules: formData.rules || undefined,
                 featured: formData.featured,
-                status: formData.status,
+                status: mapToLabel(constants?.statuses, formData.status),
                 competitionTags: formData.tags,
                 competitionRequiredSkills: formData.requiredSkills.map(skill => ({
                     name: skill,
@@ -228,8 +243,8 @@ export default function CreateCompetitionModal({
             setFormData({
                 title: "",
                 description: "",
-                category: "" as CompetitionCategory,
-                status: "draft" as CompetitionStatus,
+                category: "" as unknown as string,
+                status: "DRAFT" as unknown as string,
                 planId: "",
                 startDate: "",
                 endDate: "",
@@ -239,7 +254,7 @@ export default function CreateCompetitionModal({
                 maxParticipants: "",
                 isRegisteredAsTeam: false,
                 maxParticipantsPerTeam: 4,
-                level: "" as CompetitionLevel,
+                level: "" as unknown as string,
                 tags: [],
                 imageUrl: "",
                 website: "",
@@ -338,14 +353,18 @@ export default function CreateCompetitionModal({
                         onValueChange={(value) => handleInputChange("category", value)}
                     >
                         <SelectTrigger>
-                            <SelectValue placeholder="Chọn danh mục" />
+                            <SelectValue placeholder={isConstantsLoading ? "Đang tải..." : "Chọn danh mục"} />
                         </SelectTrigger>
                         <SelectContent>
-                            {categories.map((cat) => (
-                                <SelectItem key={cat.value} value={cat.value}>
-                                    {cat.label}
-                                </SelectItem>
-                            ))}
+                            {isConstantsLoading && (
+                                <div className="px-2 py-1.5 text-sm text-muted-foreground">Đang tải...</div>
+                            )}
+                            {!isConstantsLoading && constants &&
+                                Object.entries(constants.categories).map(([key, label]) => (
+                                    <SelectItem key={key} value={key.toLowerCase()}>
+                                        {label}
+                                    </SelectItem>
+                                ))}
                         </SelectContent>
                     </Select>
                 </div>
@@ -357,16 +376,18 @@ export default function CreateCompetitionModal({
                         onValueChange={(value) => handleInputChange("status", value)}
                     >
                         <SelectTrigger>
-                            <SelectValue placeholder="Chọn trạng thái" />
+                            <SelectValue placeholder={isConstantsLoading ? "Đang tải..." : "Chọn trạng thái"} />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="draft">Nháp</SelectItem>
-                            <SelectItem value="published">Đã xuất bản</SelectItem>
-                            <SelectItem value="registration_open">Mở đăng ký</SelectItem>
-                            <SelectItem value="registration_closed">Đóng đăng ký</SelectItem>
-                            <SelectItem value="in_progress">Đang diễn ra</SelectItem>
-                            <SelectItem value="completed">Hoàn thành</SelectItem>
-                            <SelectItem value="cancelled">Đã hủy</SelectItem>
+                            {isConstantsLoading && (
+                                <div className="px-2 py-1.5 text-sm text-muted-foreground">Đang tải...</div>
+                            )}
+                            {!isConstantsLoading && constants &&
+                                Object.entries(constants.statuses).map(([key, label]) => (
+                                    <SelectItem key={key} value={key.toLowerCase()}>
+                                        {label}
+                                    </SelectItem>
+                                ))}
                         </SelectContent>
                     </Select>
                 </div>
@@ -499,14 +520,18 @@ export default function CreateCompetitionModal({
                     onValueChange={(value) => handleInputChange("level", value)}
                 >
                     <SelectTrigger>
-                        <SelectValue placeholder="Chọn độ khó" />
+                        <SelectValue placeholder={isConstantsLoading ? "Đang tải..." : "Chọn độ khó"} />
                     </SelectTrigger>
                     <SelectContent>
-                        {levels.map((level) => (
-                            <SelectItem key={level.value} value={level.value}>
-                                {level.label}
-                            </SelectItem>
-                        ))}
+                        {isConstantsLoading && (
+                            <div className="px-2 py-1.5 text-sm text-muted-foreground">Đang tải...</div>
+                        )}
+                        {!isConstantsLoading && constants &&
+                            Object.entries(constants.levels).map(([key, label]) => (
+                                <SelectItem key={key} value={key.toLowerCase()}>
+                                    {label}
+                                </SelectItem>
+                            ))}
                     </SelectContent>
                 </Select>
             </div>
@@ -594,6 +619,15 @@ export default function CreateCompetitionModal({
                     value={formData.rules}
                     onChange={(e) => handleInputChange("rules", e.target.value)}
                 />
+            </div>
+
+            <div className="flex items-center space-x-2">
+                <Checkbox
+                    id="featured"
+                    checked={formData.featured}
+                    onCheckedChange={(checked) => handleInputChange("featured", checked)}
+                />
+                <Label htmlFor="featured">Hiển thị nổi bật</Label>
             </div>
         </div>
     );

@@ -24,6 +24,8 @@ import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import { CompetitionDetail } from "@/interfaces/ICompetition";
+import { CompetitionConstants } from "@/types";
+import { COMPETITIONS_CONSTANTS_ENDPOINT } from "@/services/constant/apiConfig";
 import { CompetitionCategory, CompetitionLevel, CompetitionStatus } from "@/interfaces/ICompetition";
 import { useAppDispatch, useAppSelector } from "@/services/store/store";
 import { updateCompetition } from "@/services/features/competitions/competitionsSlice";
@@ -80,6 +82,51 @@ export default function UpdateCompetitionModal({
     const { toast } = useToast();
     const dispatch = useAppDispatch();
     const [isLoading, setIsLoading] = useState(false);
+    const [constants, setConstants] = useState<CompetitionConstants | null>(null);
+    const [isConstantsLoading, setIsConstantsLoading] = useState(false);
+
+    useEffect(() => {
+        const fetchConstants = async () => {
+            try {
+                setIsConstantsLoading(true);
+                const res = await fetch(COMPETITIONS_CONSTANTS_ENDPOINT);
+                const json = await res.json();
+                if (json?.status === "success" && json?.data) {
+                    setConstants(json.data as CompetitionConstants);
+                } else {
+                    setConstants(null);
+                }
+            } catch (e) {
+                setConstants(null);
+            } finally {
+                setIsConstantsLoading(false);
+            }
+        };
+        if (isOpen) fetchConstants();
+    }, [isOpen]);
+
+    // Helper: find enum key (lowercase) by Vietnamese label
+    const findKeyByLabel = (dict: Record<string, string> | null | undefined, value: string | undefined) => {
+        if (!dict || !value) return value || "";
+        // If already code-like, keep it
+        const lower = String(value).toLowerCase();
+        if (dict[lower?.toUpperCase?.() as any]) return lower; // handle case when lower matches key ignoring case
+        const found = Object.entries(dict).find(([_, label]) => label === value);
+        return found ? found[0].toLowerCase() : lower;
+    };
+
+    // Normalize initial values for selects once constants are ready
+    useEffect(() => {
+        if (!competition || !isOpen) return;
+        if (!constants) return; // wait for constants
+
+        setFormData(prev => ({
+            ...prev,
+            category: findKeyByLabel(constants.categories, competition.category as any) as any,
+            status: findKeyByLabel(constants.statuses, competition.status as any) as any,
+            level: findKeyByLabel(constants.levels, competition.level as any) as any,
+        }));
+    }, [constants, competition, isOpen]);
 
     const [formData, setFormData] = useState({
         title: "",
@@ -112,8 +159,8 @@ export default function UpdateCompetitionModal({
             setFormData({
                 title: competition.title || "",
                 description: competition.description || "",
-                category: competition.category || "other",
-                status: competition.status || "draft",
+                category: (competition.category as any) || "other",
+                status: (competition.status as any) || "draft",
                 startDate: competition.startDate ? new Date(competition.startDate).toISOString().slice(0, 16) : "",
                 endDate: competition.endDate ? new Date(competition.endDate).toISOString().slice(0, 16) : "",
                 registrationDeadline: competition.registrationDeadline ? new Date(competition.registrationDeadline).toISOString().slice(0, 16) : "",
@@ -122,7 +169,7 @@ export default function UpdateCompetitionModal({
                 maxParticipants: competition.maxParticipants?.toString() || "",
                 isRegisteredAsTeam: competition.isRegisteredAsTeam || false,
                 maxParticipantsPerTeam: competition.maxParticipantsPerTeam || 4,
-                level: competition.level || "beginner",
+                level: (competition.level as any) || "beginner",
                 tags: competition.tags || [],
                 imageUrl: competition.imageUrl || "",
                 website: competition.website || "",
@@ -190,12 +237,18 @@ export default function UpdateCompetitionModal({
         setIsLoading(true);
 
         try {
-            // Prepare API request
+            const mapToLabel = (dict?: Record<string, string>, value?: string) => {
+                if (!dict || !value) return value as any;
+                const found = Object.entries(dict).find(([k]) => k.toLowerCase() === String(value).toLowerCase());
+                return (found ? found[1] : value) as any;
+            };
+
+            // Prepare API request with Vietnamese labels
             const updateRequest: UpdateCompetitionRequest = {
                 title: formData.title,
                 description: formData.description,
-                category: formData.category,
-                status: formData.status,
+                category: mapToLabel(constants?.categories, formData.category),
+                status: mapToLabel(constants?.statuses, formData.status),
                 start_date: new Date(formData.startDate).toISOString(),
                 end_date: new Date(formData.endDate).toISOString(),
                 registration_deadline: new Date(formData.registrationDeadline).toISOString(),
@@ -205,7 +258,7 @@ export default function UpdateCompetitionModal({
                 isRegisteredAsTeam: formData.isRegisteredAsTeam,
                 // Only include maxParticipantsPerTeam if isRegisteredAsTeam is true
                 ...(formData.isRegisteredAsTeam && { maxParticipantsPerTeam: formData.maxParticipantsPerTeam }),
-                level: formData.level,
+                level: mapToLabel(constants?.levels, formData.level),
                 image_url: formData.imageUrl || undefined,
                 website: formData.website || undefined,
                 rules: formData.rules || undefined,
@@ -284,14 +337,25 @@ export default function UpdateCompetitionModal({
                                         onValueChange={(value) => handleInputChange("category", value)}
                                     >
                                         <SelectTrigger>
-                                            <SelectValue placeholder="Chọn danh mục" />
+                                            <SelectValue placeholder={isConstantsLoading ? "Đang tải..." : "Chọn danh mục"} />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            {categories.map((cat) => (
-                                                <SelectItem key={cat.value} value={cat.value}>
-                                                    {cat.label}
-                                                </SelectItem>
-                                            ))}
+                                            {isConstantsLoading && (
+                                                <div className="px-2 py-1.5 text-sm text-muted-foreground">Đang tải...</div>
+                                            )}
+                                            {!isConstantsLoading && constants ? (
+                                                Object.entries(constants.categories).map(([key, label]) => (
+                                                    <SelectItem key={key} value={key.toLowerCase()}>
+                                                        {label}
+                                                    </SelectItem>
+                                                ))
+                                            ) : (
+                                                categories.map((cat) => (
+                                                    <SelectItem key={cat.value} value={cat.value}>
+                                                        {cat.label}
+                                                    </SelectItem>
+                                                ))
+                                            )}
                                         </SelectContent>
                                     </Select>
                                 </div>
@@ -303,14 +367,25 @@ export default function UpdateCompetitionModal({
                                         onValueChange={(value) => handleInputChange("status", value)}
                                     >
                                         <SelectTrigger>
-                                            <SelectValue placeholder="Chọn trạng thái" />
+                                            <SelectValue placeholder={isConstantsLoading ? "Đang tải..." : "Chọn trạng thái"} />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            {statuses.map((status) => (
-                                                <SelectItem key={status.value} value={status.value}>
-                                                    {status.label}
-                                                </SelectItem>
-                                            ))}
+                                            {isConstantsLoading && (
+                                                <div className="px-2 py-1.5 text-sm text-muted-foreground">Đang tải...</div>
+                                            )}
+                                            {!isConstantsLoading && constants ? (
+                                                Object.entries(constants.statuses).map(([key, label]) => (
+                                                    <SelectItem key={key} value={key.toLowerCase()}>
+                                                        {label}
+                                                    </SelectItem>
+                                                ))
+                                            ) : (
+                                                statuses.map((status) => (
+                                                    <SelectItem key={status.value} value={status.value}>
+                                                        {status.label}
+                                                    </SelectItem>
+                                                ))
+                                            )}
                                         </SelectContent>
                                     </Select>
                                 </div>
@@ -322,14 +397,25 @@ export default function UpdateCompetitionModal({
                                         onValueChange={(value) => handleInputChange("level", value)}
                                     >
                                         <SelectTrigger>
-                                            <SelectValue placeholder="Chọn độ khó" />
+                                            <SelectValue placeholder={isConstantsLoading ? "Đang tải..." : "Chọn độ khó"} />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            {levels.map((level) => (
-                                                <SelectItem key={level.value} value={level.value}>
-                                                    {level.label}
-                                                </SelectItem>
-                                            ))}
+                                            {isConstantsLoading && (
+                                                <div className="px-2 py-1.5 text-sm text-muted-foreground">Đang tải...</div>
+                                            )}
+                                            {!isConstantsLoading && constants ? (
+                                                Object.entries(constants.levels).map(([key, label]) => (
+                                                    <SelectItem key={key} value={key.toLowerCase()}>
+                                                        {label}
+                                                    </SelectItem>
+                                                ))
+                                            ) : (
+                                                levels.map((level) => (
+                                                    <SelectItem key={level.value} value={level.value}>
+                                                        {level.label}
+                                                    </SelectItem>
+                                                ))
+                                            )}
                                         </SelectContent>
                                     </Select>
                                 </div>

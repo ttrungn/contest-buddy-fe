@@ -120,7 +120,7 @@ export default function AuthLayout({ initialMode = "login" }: AuthLayoutProps) {
             <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => window.location.href = "/"}
+                onClick={() => navigate('/home')}
                 className="absolute top-4 left-4 flex items-center gap-2 text-muted-foreground hover:text-foreground z-10"
             >
                 <ArrowLeft className="h-4 w-4" />
