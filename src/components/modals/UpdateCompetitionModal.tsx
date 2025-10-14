@@ -55,8 +55,6 @@ const levels: { value: CompetitionLevel; label: string }[] = [
 ];
 
 const statuses: { value: CompetitionStatus; label: string }[] = [
-    { value: "draft", label: "Nháp" },
-    { value: "published", label: "Đã xuất bản" },
     { value: "registration_open", label: "Mở đăng ký" },
     { value: "registration_closed", label: "Đóng đăng ký" },
     { value: "in_progress", label: "Đang diễn ra" },
@@ -160,7 +158,7 @@ export default function UpdateCompetitionModal({
                 title: competition.title || "",
                 description: competition.description || "",
                 category: (competition.category as any) || "other",
-                status: (competition.status as any) || "draft",
+                status: (competition.status as any) || "registration_open",
                 startDate: competition.startDate ? new Date(competition.startDate).toISOString().slice(0, 16) : "",
                 endDate: competition.endDate ? new Date(competition.endDate).toISOString().slice(0, 16) : "",
                 registrationDeadline: competition.registrationDeadline ? new Date(competition.registrationDeadline).toISOString().slice(0, 16) : "",

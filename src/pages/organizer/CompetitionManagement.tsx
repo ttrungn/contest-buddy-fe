@@ -68,13 +68,11 @@ export default function CompetitionManagementPage() {
 
   // Normalize status coming from API (supports Vietnamese labels or code strings)
   const normalizeStatus = (status: string | undefined | null): string => {
-    if (!status) return "draft";
+    if (!status) return "registration_open";
     const raw = String(status);
     const lower = raw.toLowerCase();
     // If already our internal codes
     const codeMatches = [
-      "draft",
-      "published",
       "registration_open",
       "registration_closed",
       "in_progress",
@@ -85,10 +83,6 @@ export default function CompetitionManagementPage() {
     if (codeMatches.includes(lower)) return lower;
     // Map Vietnamese labels to codes
     switch (raw) {
-      case "Bản nháp":
-        return "draft";
-      case "Đã công bố":
-        return "published";
       case "Đang mở đăng ký":
         return "registration_open";
       case "Đã đóng đăng ký":
@@ -132,7 +126,7 @@ export default function CompetitionManagementPage() {
         website: comp.website,
         rules: comp.rules,
         featured: comp.featured || false,
-        status: comp.status || "draft",
+        status: comp.status || "registration_open",
         isRegisteredAsTeam: comp.isRegisteredAsTeam || false,
         maxParticipantsPerTeam: comp.maxParticipantsPerTeam || 1,
       },
@@ -143,7 +137,7 @@ export default function CompetitionManagementPage() {
         email: "organizer@example.com",
         avatar: undefined,
       },
-      status: (comp.status as ManagementStatus) || "draft",
+      status: (comp.status as ManagementStatus) || "registration_open",
       createdAt: new Date(),
       updatedAt: new Date(),
       settings: {
@@ -247,8 +241,6 @@ export default function CompetitionManagementPage() {
   const getCompetitionStatusLabel = (status: string) => {
     // If already a Vietnamese label, return it
     const viLabels = [
-      "Bản nháp",
-      "Đã công bố",
       "Đang mở đăng ký",
       "Đã đóng đăng ký",
       "Đang diễn ra",
@@ -259,10 +251,6 @@ export default function CompetitionManagementPage() {
     if (viLabels.includes(status)) return status;
 
     switch (normalizeStatus(status)) {
-      case "draft":
-        return "Bản nháp";
-      case "published":
-        return "Đã công bố";
       case "registration_open":
         return "Đang mở đăng ký";
       case "registration_closed":
@@ -281,10 +269,6 @@ export default function CompetitionManagementPage() {
 
   const getCompetitionStatusColor = (status: string) => {
     switch (normalizeStatus(status)) {
-      case "draft":
-        return "bg-gray-100 text-gray-700";
-      case "published":
-        return "bg-blue-100 text-blue-700";
       case "registration_open":
         return "bg-green-100 text-green-700";
       case "registration_closed":
@@ -583,10 +567,10 @@ export default function CompetitionManagementPage() {
                       <Badge
                         className={cn(
                           "ml-2",
-                          getCompetitionStatusColor(comp.status || "draft")
+                          getCompetitionStatusColor(comp.status || "registration_open")
                         )}
                       >
-                        {getCompetitionStatusLabel(comp.status || "draft")}
+                        {getCompetitionStatusLabel(comp.status || "registration_open")}
                       </Badge>
                     </div>
                   ))}
@@ -627,10 +611,10 @@ export default function CompetitionManagementPage() {
                             <Badge
                               className={cn(
                                 "ml-2",
-                                getCompetitionStatusColor(comp.status || "draft")
+                                getCompetitionStatusColor(comp.status || "registration_open")
                               )}
                             >
-                              {getCompetitionStatusLabel(comp.status || "draft")}
+                              {getCompetitionStatusLabel(comp.status || "registration_open")}
                             </Badge>
                           </div>
                         </SelectItem>
@@ -683,10 +667,10 @@ export default function CompetitionManagementPage() {
                       </h3>
                       <Badge
                         className={cn(
-                          getCompetitionStatusColor(selectedCompetition?.status || "draft")
+                          getCompetitionStatusColor(selectedCompetition?.status || "registration_open")
                         )}
                       >
-                        {getCompetitionStatusLabel(selectedCompetition?.status || "draft")}
+                        {getCompetitionStatusLabel(selectedCompetition?.status || "registration_open")}
                       </Badge>
                     </div>
                     <p className="text-muted-foreground mb-3">

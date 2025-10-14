@@ -66,7 +66,6 @@ export default function MyCompetitions() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "registration_open":
-      case "published":
         return (
           <Badge className="bg-green-100 text-green-700 border-green-200">
             Đang mở đăng ký

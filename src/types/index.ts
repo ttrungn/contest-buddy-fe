@@ -508,8 +508,6 @@ export interface CompetitionParticipant {
 }
 
 export type ManagementStatus =
-  | "draft"
-  | "published"
   | "ongoing"
   | "completed"
   | "cancelled";
