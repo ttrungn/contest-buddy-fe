@@ -13,8 +13,6 @@ export type CompetitionLevel =
   | "all_levels";
 
 export type CompetitionStatus =
-  | "draft"
-  | "published"
   | "registration_open"
   | "registration_closed"
   | "in_progress"

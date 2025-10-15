@@ -69,7 +69,7 @@ export default function CreateCompetitionModal({
         description: "",
         // Store lowercase values expected by backend (e.g., "hackathon", "beginner", "draft")
         category: "" as unknown as string,
-        status: "draft" as unknown as string,
+        status: "" as unknown as string,
         planId: "",
         startDate: "",
         endDate: "",
@@ -316,7 +316,7 @@ export default function CreateCompetitionModal({
             </div>
 
             <div className="space-y-2">
-                <Label>Gói dịch vụ *</Label>
+                <Label>Gói dịch vụ theo tháng *</Label>
                 <Select
                     value={formData.planId}
                     onValueChange={(value) => handleInputChange("planId", value)}

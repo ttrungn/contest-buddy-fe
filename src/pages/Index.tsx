@@ -102,12 +102,10 @@ export default function Index() {
   // Use API data directly (no client-side filtering)
   // Normalize status from API (supports Vietnamese labels)
   const normalizeStatus = (status: string | undefined | null): string => {
-    if (!status) return "draft";
+    if (!status) return "registration_open";
     const raw = String(status);
     const lower = raw.toLowerCase();
     const known = [
-      "draft",
-      "published",
       "registration_open",
       "registration_closed",
       "in_progress",
@@ -117,10 +115,6 @@ export default function Index() {
     ];
     if (known.includes(lower)) return lower;
     switch (raw) {
-      case "Bản nháp":
-        return "draft";
-      case "Đã công bố":
-        return "published";
       case "Đang mở đăng ký":
         return "registration_open";
       case "Đã đóng đăng ký":
