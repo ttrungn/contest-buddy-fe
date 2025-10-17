@@ -23,6 +23,7 @@ export interface Competition {
   isRegistered?: boolean;
   isInterested?: boolean;
   registrationDate?: Date;
+  paymentStatus?: CompetitionPaymentStatus;
 }
 
 export interface User {
@@ -507,10 +508,7 @@ export interface CompetitionParticipant {
   notes?: string;
 }
 
-export type ManagementStatus =
-  | "ongoing"
-  | "completed"
-  | "cancelled";
+export type ManagementStatus = "ongoing" | "completed" | "cancelled";
 export type FinanceType = "revenue" | "expense";
 export type FinanceStatus = "pending" | "confirmed" | "cancelled";
 export type SponsorshipType = "cash" | "in-kind" | "media";
@@ -530,3 +528,41 @@ export type SubmissionStatus =
   | "submitted"
   | "reviewed"
   | "scored";
+
+// Payment Status Types
+export type CompetitionPaymentStatus = "UNPAID" | "PAID" | "EXPIRED";
+
+export const COMPETITION_PAYING_STATUSES = {
+  UNPAID: "Chưa thanh toán",
+  PAID: "Đã thanh toán",
+  EXPIRED: "Hết hạn",
+} as const;
+
+// Payment Interfaces
+export interface CompetitionPaymentRequest {
+  competitionId: string;
+}
+
+export interface CompetitionPaymentResponse {
+  success: boolean;
+  message: string;
+  data: {
+    order: {
+      success: boolean;
+      result: {
+        bin: string;
+        accountNumber: string;
+        accountName: string;
+        amount: number;
+        description: string;
+        orderCode: number;
+        currency: string;
+        paymentLinkId: string;
+        status: string;
+        expiredAt: number;
+        checkoutUrl: string;
+        qrCode: string;
+      };
+    };
+  };
+}

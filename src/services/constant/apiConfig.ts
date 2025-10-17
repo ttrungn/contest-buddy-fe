@@ -104,6 +104,9 @@ export const CHAT_MESSAGES_ENDPOINT = (conversationId: string) =>
 export const CHAT_MARK_READ_ENDPOINT = (conversationId: string) =>
   `${BASE_URL}/api/chat/conversations/${conversationId}/read`;
 
+// Payment API endpoints
+export const COMPETITION_PAYMENT_ENDPOINT = `${BASE_URL}/api/orders/competition`;
+
 // Socket.IO endpoints
 export const CHAT_WEBSOCKET_ENDPOINT = (token: string) =>
   `https://contest-buddy-be-594444870778.asia-southeast1.run.app`;

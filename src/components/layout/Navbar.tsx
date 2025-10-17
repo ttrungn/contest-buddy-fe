@@ -22,6 +22,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -127,9 +128,18 @@ export default function Navbar() {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon">
-                <div className="h-8 w-8 rounded-full bg-gradient-to-r from-primary to-purple-500 flex items-center justify-center">
-                  <User className="h-4 w-4 text-white" />
-                </div>
+                {isAuthenticated && user ? (
+                  <Avatar className="h-8 w-8">
+                    <AvatarImage src={user.avatar_url || (user as any).avatar} alt={user.full_name} />
+                    <AvatarFallback className="bg-gradient-to-r from-primary to-purple-500 text-white">
+                      {user.full_name?.split(' ').map(n => n[0]).join('').toUpperCase() || <User className="h-4 w-4" />}
+                    </AvatarFallback>
+                  </Avatar>
+                ) : (
+                  <div className="h-8 w-8 rounded-full bg-gradient-to-r from-primary to-purple-500 flex items-center justify-center">
+                    <User className="h-4 w-4 text-white" />
+                  </div>
+                )}
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
@@ -137,9 +147,12 @@ export default function Navbar() {
                 <>
                   <div className="px-3 py-2 border-b">
                     <div className="flex items-center space-x-2">
-                      <div className="h-8 w-8 rounded-full bg-gradient-to-r from-primary to-purple-500 flex items-center justify-center">
-                        <User className="h-4 w-4 text-white" />
-                      </div>
+                      <Avatar className="h-8 w-8">
+                        <AvatarImage src={user?.avatar_url || (user as any)?.avatar} alt={user?.full_name} />
+                        <AvatarFallback className="bg-gradient-to-r from-primary to-purple-500 text-white">
+                          {user?.full_name?.split(' ').map(n => n[0]).join('').toUpperCase() || <User className="h-4 w-4" />}
+                        </AvatarFallback>
+                      </Avatar>
                       <div>
                         <p className="text-sm font-medium">{user?.full_name}</p>
                         <p className="text-xs text-muted-foreground">{user?.email}</p>

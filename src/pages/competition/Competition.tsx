@@ -37,6 +37,7 @@ export default function Competition() {
   const { detail: competition, isLoading } = useAppSelector(
     (s) => s.competitions,
   );
+  const { isAuthenticated } = useAppSelector((s) => s.auth);
   useEffect(() => {
     if (id) dispatch(fetchCompetitionDetail(id));
   }, [dispatch, id]);
@@ -120,6 +121,16 @@ export default function Competition() {
 
   const handleChatWithUser = (user: any) => {
     openChatWithUser(user.id, user.fullName);
+  };
+
+  const handleRegistrationClick = () => {
+    if (!isAuthenticated) {
+      // Redirect to login page if user is not authenticated
+      navigate("/login");
+      return;
+    }
+    // If authenticated, open registration modal
+    setIsRegistrationModalOpen(true);
   };
 
   // Read normalized camelCase data directly from store
@@ -413,13 +424,13 @@ export default function Competition() {
                         Đã đăng ký
                       </Button>
                     ) : (norm?.status ===
-                        competitionConstants.statuses.REGISTRATION_OPEN) &&
+                      competitionConstants.statuses.REGISTRATION_OPEN) &&
                       daysLeft >= 0 ? (
                       !norm?.isRegisteredAsTeam ? (
                         <Button
                           className="w-full"
                           size="lg"
-                          onClick={() => setIsRegistrationModalOpen(true)}
+                          onClick={handleRegistrationClick}
                           disabled={isCheckingRegistration}
                         >
                           {isCheckingRegistration ? (
@@ -438,7 +449,7 @@ export default function Competition() {
                         <Button
                           className="w-full"
                           size="lg"
-                          onClick={() => setIsRegistrationModalOpen(true)}
+                          onClick={handleRegistrationClick}
                           disabled={isCheckingRegistration}
                         >
                           {isCheckingRegistration ? (
@@ -472,7 +483,7 @@ export default function Competition() {
                         disabled
                       >
                         {norm?.status ===
-                        competitionConstants.statuses.COMPLETED
+                          competitionConstants.statuses.COMPLETED
                           ? "Đã kết thúc"
                           : daysLeft < 0
                             ? "Đã hết hạn đăng ký"
@@ -541,7 +552,7 @@ export default function Competition() {
 
                   {/* Organizer (from response) */}
                   {(norm as any)?.organizer?.email ||
-                  (norm as any)?.organizer?.website ? (
+                    (norm as any)?.organizer?.website ? (
                     <div>
                       <div className="font-medium mb-2">Ban tổ chức</div>
                       <div className="text-sm text-muted-foreground break-words">

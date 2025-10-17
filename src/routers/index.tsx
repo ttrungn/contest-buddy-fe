@@ -26,6 +26,7 @@ import ForgotPassword from "../pages/auth/ForgotPassword";
 import ResetPassword from "../pages/auth/ResetPassword";
 import Unauthorized from "../pages/auth/Unauthorized";
 import NotFound from "../pages/NotFound";
+import { PaymentCancel, PaymentSuccess } from "../pages/payment";
 import ProtectedRoute from "../components/layout/ProtectedRoute";
 import GuestLayout from "../components/layout/GuestLayout";
 import CustomerLayout from "../components/layout/CustomerLayout";
@@ -34,7 +35,7 @@ const AppRouter = () => {
     const InitialRedirect = () => {
         const { isAuthenticated, user, needsVerification } = useAppSelector((s) => s.auth);
         if (!isAuthenticated) {
-            return <Navigate to="/login" replace />;
+            return <Navigate to="/home" replace />;
         }
         if (isCustomer(user) && needsVerification) {
             return <Navigate to="/verify-email" replace />;
@@ -60,6 +61,10 @@ const AppRouter = () => {
             <Route path="/forgot-password" element={<ProtectedRoute authRedirectTo="/"><ForgotPassword /></ProtectedRoute>} />
             <Route path="/reset-password" element={<ProtectedRoute authRedirectTo="/"><ResetPassword /></ProtectedRoute>} />
             <Route path="/reset-password/:token" element={<ProtectedRoute authRedirectTo="/"><ResetPassword /></ProtectedRoute>} />
+
+            {/* Payment callback routes (no site chrome) */}
+            <Route path="/payment/success" element={<PaymentSuccess />} />
+            <Route path="/payment/cancel" element={<PaymentCancel />} />
 
             {/* Public & guest routes (with site chrome) */}
             <Route element={<GuestLayout />}>

@@ -52,18 +52,27 @@ import { Separator } from "@/components/ui/separator";
 import { mockCompetitionManagement } from "@/lib/mockData";
 import { useAppDispatch, useAppSelector } from "@/services/store/store";
 import { fetchOrganizerCompetitions, fetchCompetitionDetail, updateCompetition, deleteCompetition } from "@/services/features/competitions/competitionsSlice";
+import { createCompetitionPayment, clearPaymentData } from "@/services/features/payment/paymentSlice";
 import CompetitionModals from "@/components/modals/CompetitionModals";
-import { CompetitionManagement, CompetitionParticipant, Competition, ManagementStatus } from "@/types";
+import { CompetitionManagement, CompetitionParticipant, Competition, ManagementStatus, COMPETITION_PAYING_STATUSES, CompetitionPaymentStatus } from "@/types";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 
 export default function CompetitionManagementPage() {
   const dispatch = useAppDispatch();
   const { list, isLoading, error } = useAppSelector((s) => s.competitions);
+  const { paymentUrl, paymentData, isLoading: isPaymentLoading } = useAppSelector((s) => s.payment);
   const { toast } = useToast();
 
   useEffect(() => {
     dispatch(fetchOrganizerCompetitions({ page: 1, limit: 50 }));
+  }, [dispatch]);
+
+  // Clear payment data when component unmounts
+  useEffect(() => {
+    return () => {
+      dispatch(clearPaymentData());
+    };
   }, [dispatch]);
 
   // Normalize status coming from API (supports Vietnamese labels or code strings)
@@ -102,78 +111,91 @@ export default function CompetitionManagementPage() {
   // Convert API data to CompetitionManagement format
   const competitions = list
     .filter((comp) => comp && comp.id) // Filter out null/undefined items
-    .map((comp: any) => ({
-      id: `mgmt-${comp.id}`,
-      competitionId: comp.id,
-      competition: {
+    .map((comp: any) => {
+      // Debug logging for API response
+      console.log('API Competition data:', {
         id: comp.id,
         title: comp.title,
-        description: comp.description || "",
-        category: comp.category || "other",
-        organizer: "Current Organizer",
-        startDate: comp.start_date ? new Date(comp.start_date) : new Date(),
-        endDate: comp.end_date ? new Date(comp.end_date) : new Date(),
-        registrationDeadline: comp.registration_deadline ? new Date(comp.registration_deadline) : new Date(),
-        location: comp.location || "TBA",
-        isOnline: false,
-        prizePool: comp.prize_pool_text || "TBA",
-        participants: comp.participants_count || 0,
-        maxParticipants: comp.max_participants || 100,
-        requiredSkills: comp.competitionRequiredSkills || [],
-        level: comp.level || "beginner",
-        tags: comp.competitionTags || [],
-        imageUrl: comp.image_url,
-        website: comp.website,
-        rules: comp.rules,
-        featured: comp.featured || false,
-        status: comp.status || "registration_open",
-        isRegisteredAsTeam: comp.isRegisteredAsTeam || false,
-        maxParticipantsPerTeam: comp.maxParticipantsPerTeam || 1,
-      },
-      organizerId: comp.organizer_id || "current-organizer",
-      organizer: {
-        id: comp.organizer_id || "current-organizer",
-        name: "Current Organizer",
-        email: "organizer@example.com",
-        avatar: undefined,
-      },
-      status: (comp.status as ManagementStatus) || "registration_open",
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      settings: {
-        allowLateRegistration: false,
-        autoApproveRegistrations: true,
-        maxParticipants: comp.max_participants || 100,
-        registrationFee: 0,
-        emailNotifications: true,
-        publicLeaderboard: true,
-        allowTeamRegistration: comp.isRegisteredAsTeam || false,
-        maxTeamSize: comp.maxParticipantsPerTeam || 5,
-      },
-      finances: {
-        budget: 0,
-        revenue: [],
-        expenses: [],
-        prizePool: 0,
-        sponsorships: [],
-        totalRevenue: 0,
-        totalExpenses: 0,
-        netProfit: 0,
-      },
-      statistics: {
-        totalRegistrations: comp.participants_count || 0,
-        approvedRegistrations: 0,
-        pendingRegistrations: 0,
-        rejectedRegistrations: 0,
-        completedSubmissions: 0,
-        registrationsByDate: [],
-        participantsBySchool: [],
-        participantsByRegion: [],
-        averageRating: 0,
-        completionRate: 0,
-      },
-      participants: [],
-    }));
+        payment_status: comp.payment_status,
+        paying_status: comp.paying_status,
+        fullData: comp
+      });
+
+      return {
+        id: `mgmt-${comp.id}`,
+        competitionId: comp.id,
+        competition: {
+          id: comp.id,
+          title: comp.title,
+          description: comp.description || "",
+          category: comp.category || "other",
+          organizer: "Current Organizer",
+          startDate: comp.start_date ? new Date(comp.start_date) : new Date(),
+          endDate: comp.end_date ? new Date(comp.end_date) : new Date(),
+          registrationDeadline: comp.registration_deadline ? new Date(comp.registration_deadline) : new Date(),
+          location: comp.location || "TBA",
+          isOnline: false,
+          prizePool: comp.prize_pool_text || "TBA",
+          participants: comp.participants_count || 0,
+          maxParticipants: comp.max_participants || 100,
+          requiredSkills: comp.competitionRequiredSkills || [],
+          level: comp.level || "beginner",
+          tags: comp.competitionTags || [],
+          imageUrl: comp.image_url,
+          website: comp.website,
+          rules: comp.rules,
+          featured: comp.featured || false,
+          status: comp.status || "registration_open",
+          isRegisteredAsTeam: comp.isRegisteredAsTeam || false,
+          maxParticipantsPerTeam: comp.maxParticipantsPerTeam || 1,
+          payingStatus: comp.paying_status || comp.payment_status || "Chưa thanh toán",
+          paymentStatus: comp.payment_status || comp.paying_status || "UNPAID",
+        },
+        organizerId: comp.organizer_id || "current-organizer",
+        organizer: {
+          id: comp.organizer_id || "current-organizer",
+          name: "Current Organizer",
+          email: "organizer@example.com",
+          avatar: undefined,
+        },
+        status: (comp.status as ManagementStatus) || "registration_open",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        settings: {
+          allowLateRegistration: false,
+          autoApproveRegistrations: true,
+          maxParticipants: comp.max_participants || 100,
+          registrationFee: 0,
+          emailNotifications: true,
+          publicLeaderboard: true,
+          allowTeamRegistration: comp.isRegisteredAsTeam || false,
+          maxTeamSize: comp.maxParticipantsPerTeam || 5,
+        },
+        finances: {
+          budget: 0,
+          revenue: [],
+          expenses: [],
+          prizePool: 0,
+          sponsorships: [],
+          totalRevenue: 0,
+          totalExpenses: 0,
+          netProfit: 0,
+        },
+        statistics: {
+          totalRegistrations: comp.participants_count || 0,
+          approvedRegistrations: 0,
+          pendingRegistrations: 0,
+          rejectedRegistrations: 0,
+          completedSubmissions: 0,
+          registrationsByDate: [],
+          participantsBySchool: [],
+          participantsByRegion: [],
+          averageRating: 0,
+          completionRate: 0,
+        },
+        participants: [],
+      };
+    });
 
   const [selectedCompetition, setSelectedCompetition] = useState(
     competitions[0] || null,
@@ -379,6 +401,100 @@ export default function CompetitionManagementPage() {
     setCompetitionToUpdate(null);
   };
 
+  // Handle payment for competition
+  const handlePayment = async (competitionId: string) => {
+    try {
+      console.log('Creating payment for competition:', competitionId);
+      const result = await dispatch(createCompetitionPayment({ competitionId })).unwrap();
+
+      console.log('Payment result:', result);
+
+      if (result.success && result.data.order.result.checkoutUrl) {
+        const checkoutUrl = result.data.order.result.checkoutUrl;
+        const orderCode = result.data.order.result.orderCode;
+        const amount = result.data.order.result.amount;
+
+        console.log('Redirecting to checkout URL:', checkoutUrl);
+
+        // Add callback URLs to checkout URL
+        const successUrl = `${window.location.origin}/payment/success?amount=${amount}&orderCode=${orderCode}`;
+        const cancelUrl = `${window.location.origin}/payment/cancel`;
+
+        // Add callback URLs as query parameters
+        const urlWithCallbacks = new URL(checkoutUrl);
+        urlWithCallbacks.searchParams.set('returnUrl', successUrl);
+        urlWithCallbacks.searchParams.set('cancelUrl', cancelUrl);
+
+        console.log('Final checkout URL with callbacks:', urlWithCallbacks.toString());
+
+        // Redirect to payment URL
+        window.open(urlWithCallbacks.toString(), '_blank');
+
+        toast({
+          title: "Chuyển hướng thanh toán",
+          description: "Đang chuyển hướng đến trang thanh toán...",
+        });
+      } else {
+        console.error('No checkout URL found in response:', result);
+        toast({
+          title: "Lỗi thanh toán",
+          description: "Không tìm thấy URL thanh toán",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('Payment error:', error);
+      toast({
+        title: "Lỗi thanh toán",
+        description: error as string,
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Get payment status for competition
+  const getPaymentStatus = (competition: any): CompetitionPaymentStatus => {
+    // Check multiple possible fields for payment status
+    const paymentStatus = competition?.competition?.paymentStatus ||
+      competition?.competition?.payingStatus ||
+      competition?.paymentStatus ||
+      competition?.payingStatus;
+
+    // Debug logging
+    console.log('Competition payment status debug:', {
+      competitionId: competition?.competitionId,
+      title: competition?.competition?.title,
+      rawPaymentStatus: paymentStatus,
+      competitionPaymentStatus: competition?.competition?.paymentStatus,
+      competitionPayingStatus: competition?.competition?.payingStatus,
+      topLevelPaymentStatus: competition?.paymentStatus,
+      topLevelPayingStatus: competition?.payingStatus,
+    });
+
+    // Convert Vietnamese status to English
+    if (paymentStatus === "Đã thanh toán" || paymentStatus === "PAID") {
+      return "PAID";
+    } else if (paymentStatus === "Hết hạn" || paymentStatus === "EXPIRED") {
+      return "EXPIRED";
+    }
+
+    return "UNPAID";
+  };
+
+  // Get payment status color
+  const getPaymentStatusColor = (status: CompetitionPaymentStatus) => {
+    switch (status) {
+      case "PAID":
+        return "bg-green-100 text-green-700 border-green-200";
+      case "UNPAID":
+        return "bg-yellow-100 text-yellow-700 border-yellow-200";
+      case "EXPIRED":
+        return "bg-red-100 text-red-700 border-red-200";
+      default:
+        return "bg-gray-100 text-gray-700 border-gray-200";
+    }
+  };
+
   const StatCard = ({
     title,
     value,
@@ -517,15 +633,13 @@ export default function CompetitionManagementPage() {
                 </div>
                 <div className="text-center">
                   <div className="text-2xl font-bold text-purple-600">
-                    {formatCurrency(
-                      competitions.reduce(
-                        (total, comp) => total + comp.finances.totalRevenue,
-                        0,
-                      ),
-                    )}
+                    {
+                      competitions.filter((comp) => comp.competition.payingStatus === "Đã thanh toán")
+                        .length
+                    }
                   </div>
                   <div className="text-sm text-muted-foreground">
-                    Tổng doanh thu
+                    Đã thanh toán
                   </div>
                 </div>
                 <div className="text-center">
@@ -544,36 +658,69 @@ export default function CompetitionManagementPage() {
               <div className="space-y-2">
                 <div className="text-sm font-medium">Danh sách cuộc thi:</div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {competitions.map((comp) => (
-                    <div
-                      key={comp.id}
-                      className={cn(
-                        "flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-colors",
-                        selectedCompetition?.id === comp.id
-                          ? "border-purple-200 bg-purple-50"
-                          : "hover:bg-gray-50",
-                      )}
-                      onClick={() => setSelectedCompetition(comp)}
-                    >
-                      <div className="flex-1">
-                        <div className="font-medium truncate">
-                          {comp.competition.title}
+                  {competitions.map((comp) => {
+                    const paymentStatus = getPaymentStatus(comp);
+                    const needsPayment = paymentStatus === "UNPAID" || paymentStatus === "EXPIRED";
+
+                    return (
+                      <div
+                        key={comp.id}
+                        className={cn(
+                          "flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-colors",
+                          selectedCompetition?.id === comp.id
+                            ? "border-purple-200 bg-purple-50"
+                            : "hover:bg-gray-50",
+                        )}
+                        onClick={() => setSelectedCompetition(comp)}
+                      >
+                        <div className="flex-1">
+                          <div className="font-medium truncate">
+                            {comp.competition.title}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {comp.statistics.totalRegistrations} đăng ký •{" "}
+                            {formatDate(comp.competition.startDate)}
+                          </div>
+                          {/* Payment Status */}
+                          <div className="mt-1">
+                            <Badge
+                              className={cn(
+                                "text-xs",
+                                getPaymentStatusColor(paymentStatus)
+                              )}
+                            >
+                              {COMPETITION_PAYING_STATUSES[paymentStatus]}
+                            </Badge>
+                          </div>
                         </div>
-                        <div className="text-xs text-muted-foreground">
-                          {comp.statistics.totalRegistrations} đăng ký •{" "}
-                          {formatDate(comp.competition.startDate)}
+                        <div className="flex items-center space-x-2">
+                          <Badge
+                            className={cn(
+                              "ml-2",
+                              getCompetitionStatusColor(comp.status || "registration_open")
+                            )}
+                          >
+                            {getCompetitionStatusLabel(comp.status || "registration_open")}
+                          </Badge>
+                          {/* Payment Button */}
+                          {needsPayment && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handlePayment(comp.competitionId);
+                              }}
+                              disabled={isPaymentLoading}
+                              className="text-xs"
+                            >
+                              {isPaymentLoading ? "Đang xử lý..." : "Thanh toán"}
+                            </Button>
+                          )}
                         </div>
                       </div>
-                      <Badge
-                        className={cn(
-                          "ml-2",
-                          getCompetitionStatusColor(comp.status || "registration_open")
-                        )}
-                      >
-                        {getCompetitionStatusLabel(comp.status || "registration_open")}
-                      </Badge>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             </CardContent>
@@ -623,10 +770,7 @@ export default function CompetitionManagementPage() {
                   </Select>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <Button variant="outline" size="sm">
-                    <Eye className="h-4 w-4 mr-1" />
-                    Xem trang thi
-                  </Button>
+
                   <Button
                     variant="outline"
                     size="sm"
@@ -694,9 +838,7 @@ export default function CompetitionManagementPage() {
                       <div className="flex items-center space-x-2">
                         <DollarSign className="h-4 w-4 text-muted-foreground" />
                         <span>
-                          {formatCurrency(
-                            selectedCompetition?.finances?.totalRevenue || 0,
-                          )}
+                          {selectedCompetition?.competition?.payingStatus || "Chưa thanh toán"}
                         </span>
                       </div>
                       <div className="flex items-center space-x-2">
@@ -717,12 +859,9 @@ export default function CompetitionManagementPage() {
         {/* Tabs */}
         {selectedCompetition && (
           <Tabs value={selectedTab} onValueChange={setSelectedTab}>
-            <TabsList className="grid w-full grid-cols-5">
+            <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="overview">Tổng quan</TabsTrigger>
               <TabsTrigger value="participants">Thí sinh</TabsTrigger>
-              <TabsTrigger value="finances">Tài chính</TabsTrigger>
-              <TabsTrigger value="statistics">Thống kê</TabsTrigger>
-              <TabsTrigger value="settings">Cài đặt</TabsTrigger>
             </TabsList>
 
             {/* Overview Tab */}
@@ -737,13 +876,11 @@ export default function CompetitionManagementPage() {
                   change="+12% so với tuần trước"
                 />
                 <StatCard
-                  title="Doanh thu"
-                  value={formatCurrency(
-                    selectedCompetition?.finances?.totalRevenue || 0,
-                  )}
+                  title="Trạng thái thanh toán"
+                  value={selectedCompetition?.competition?.payingStatus || "Chưa thanh toán"}
                   icon={DollarSign}
                   color="text-green-600"
-                  change="78% hoàn thành m��c tiêu"
+                  change=""
                 />
                 <StatCard
                   title="Tỷ lệ hoàn thành"
@@ -845,20 +982,13 @@ export default function CompetitionManagementPage() {
                     </div>
                     <div>
                       <div className="flex justify-between text-sm mb-2">
-                        <span>Ngân sách</span>
+                        <span>Trạng thái</span>
                         <span>
-                          {formatCurrency(
-                            selectedCompetition?.finances?.totalExpenses || 0,
-                          )}
-                          /{formatCurrency(selectedCompetition?.finances?.budget || 0)}
+                          {selectedCompetition?.competition?.payingStatus || "Chưa thanh toán"}
                         </span>
                       </div>
                       <Progress
-                        value={
-                          ((selectedCompetition?.finances?.totalExpenses || 0) /
-                            (selectedCompetition?.finances?.budget || 1)) *
-                          100
-                        }
+                        value={selectedCompetition?.competition?.payingStatus === "Đã thanh toán" ? 100 : 0}
                       />
                     </div>
                   </CardContent>
@@ -1007,229 +1137,6 @@ export default function CompetitionManagementPage() {
               </Card>
             </TabsContent>
 
-            {/* Finances Tab */}
-            <TabsContent value="finances" className="space-y-6 mt-6">
-              {/* Financial Summary */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-green-600">Doanh thu</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-2xl font-bold">
-                      {formatCurrency(selectedCompetition.finances.totalRevenue)}
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      {selectedCompetition.finances.revenue.length} khoản thu
-                    </p>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-red-600">Chi phí</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-2xl font-bold">
-                      {formatCurrency(selectedCompetition.finances.totalExpenses)}
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      {selectedCompetition.finances.expenses.length} khoản chi
-                    </p>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-blue-600">Lợi nhuận</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-2xl font-bold">
-                      {formatCurrency(selectedCompetition.finances.netProfit)}
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      {selectedCompetition.finances.netProfit > 0 ? "Lãi" : "Lỗ"}
-                    </p>
-                  </CardContent>
-                </Card>
-              </div>
-
-              {/* Financial Entries */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Khoản thu</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      {selectedCompetition.finances.revenue.map((entry) => (
-                        <div
-                          key={entry.id}
-                          className="flex items-center justify-between p-3 rounded-lg border"
-                        >
-                          <div>
-                            <p className="font-medium">{entry.description}</p>
-                            <p className="text-sm text-muted-foreground">
-                              {entry.category} • {formatDate(entry.date)}
-                            </p>
-                          </div>
-                          <div className="text-right">
-                            <p className="font-medium text-green-600">
-                              +{formatCurrency(entry.amount)}
-                            </p>
-                            <Badge className={getStatusColor(entry.status)}>
-                              {getStatusLabel(entry.status)}
-                            </Badge>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Khoản chi</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      {selectedCompetition.finances.expenses.map((entry) => (
-                        <div
-                          key={entry.id}
-                          className="flex items-center justify-between p-3 rounded-lg border"
-                        >
-                          <div>
-                            <p className="font-medium">{entry.description}</p>
-                            <p className="text-sm text-muted-foreground">
-                              {entry.category} • {formatDate(entry.date)}
-                            </p>
-                          </div>
-                          <div className="text-right">
-                            <p className="font-medium text-red-600">
-                              -{formatCurrency(entry.amount)}
-                            </p>
-                            <Badge className={getStatusColor(entry.status)}>
-                              {getStatusLabel(entry.status)}
-                            </Badge>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            </TabsContent>
-
-            {/* Statistics Tab */}
-            <TabsContent value="statistics" className="space-y-6 mt-6">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Thống kê đăng ký theo trường</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      {selectedCompetition.statistics.participantsBySchool.map(
-                        (item) => (
-                          <div key={item.school} className="space-y-2">
-                            <div className="flex justify-between text-sm">
-                              <span>{item.school}</span>
-                              <span>{item.count} thí sinh</span>
-                            </div>
-                            <Progress
-                              value={
-                                (item.count /
-                                  selectedCompetition.statistics
-                                    .totalRegistrations) *
-                                100
-                              }
-                            />
-                          </div>
-                        ),
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Thống kê theo khu vực</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      {selectedCompetition.statistics.participantsByRegion.map(
-                        (item) => (
-                          <div key={item.region} className="space-y-2">
-                            <div className="flex justify-between text-sm">
-                              <span>{item.region}</span>
-                              <span>{item.count} thí sinh</span>
-                            </div>
-                            <Progress
-                              value={
-                                (item.count /
-                                  selectedCompetition.statistics
-                                    .totalRegistrations) *
-                                100
-                              }
-                            />
-                          </div>
-                        ),
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            </TabsContent>
-
-            {/* Settings Tab */}
-            <TabsContent value="settings" className="space-y-6 mt-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Cài đặt cuộc thi</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium">Cho phép đăng ký muộn</p>
-                        <p className="text-sm text-muted-foreground">
-                          Thí sinh có thể đăng ký sau deadline
-                        </p>
-                      </div>
-                      <Badge
-                        className={
-                          selectedCompetition.settings.allowLateRegistration
-                            ? "bg-green-100 text-green-700"
-                            : "bg-red-100 text-red-700"
-                        }
-                      >
-                        {selectedCompetition.settings.allowLateRegistration
-                          ? "Bật"
-                          : "Tắt"}
-                      </Badge>
-                    </div>
-                    <Separator />
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium">Tự động duyệt đăng ký</p>
-                        <p className="text-sm text-muted-foreground">
-                          Đăng ký được duyệt tự động mà không cần review
-                        </p>
-                      </div>
-                      <Badge
-                        className={
-                          selectedCompetition.settings.autoApproveRegistrations
-                            ? "bg-green-100 text-green-700"
-                            : "bg-red-100 text-red-700"
-                        }
-                      >
-                        {selectedCompetition.settings.autoApproveRegistrations
-                          ? "Bật"
-                          : "Tắt"}
-                      </Badge>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
           </Tabs>
         )}
       </div>
