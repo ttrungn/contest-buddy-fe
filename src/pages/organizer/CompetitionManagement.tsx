@@ -417,7 +417,7 @@ export default function CompetitionManagementPage() {
         console.log('Redirecting to checkout URL:', checkoutUrl);
 
         // Add callback URLs to checkout URL
-        const successUrl = `${window.location.origin}/payment/success?amount=${amount}&orderCode=${orderCode}`;
+        const successUrl = `${window.location.origin}/payment/return`;
         const cancelUrl = `${window.location.origin}/payment/cancel`;
 
         // Add callback URLs as query parameters

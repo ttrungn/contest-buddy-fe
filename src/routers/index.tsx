@@ -63,7 +63,7 @@ const AppRouter = () => {
             <Route path="/reset-password/:token" element={<ProtectedRoute authRedirectTo="/"><ResetPassword /></ProtectedRoute>} />
 
             {/* Payment callback routes (no site chrome) */}
-            <Route path="/payment/success" element={<PaymentSuccess />} />
+            <Route path="/payment/return" element={<PaymentSuccess />} />
             <Route path="/payment/cancel" element={<PaymentCancel />} />
 
             {/* Public & guest routes (with site chrome) */}
