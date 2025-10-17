@@ -7,6 +7,7 @@ import userReducer from "../features/users/userSlice";
 import communityReducer from "../features/community/communitySlice";
 import organizerReducer from "../features/organizer/organizerSlice";
 import competitionsReducer from "../features/competitions/competitionsSlice";
+import paymentReducer from "../features/payment/paymentSlice";
 import plansReducer from "../features/plans/plansSlice";
 import teamsReducer from "../features/teams/teamsSlice";
 import chatReducer from "../features/chat/chatSlice";
@@ -33,6 +34,7 @@ const rootReducer = combineReducers({
   community: communityReducer,
   organizer: organizerReducer,
   competitions: competitionsReducer,
+  payment: paymentReducer,
   plans: plansReducer,
   teams: teamsReducer,
   chat: chatReducer,
