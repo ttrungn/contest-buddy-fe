@@ -220,19 +220,26 @@ export default function ChatUpdated({ }: ChatUpdatedProps) {
 
     if (!isChatOpen) {
         return (
-            <div className="fixed bottom-4 right-4 z-50">
-                <Button
-                    onClick={onToggle}
-                    className="h-14 w-14 rounded-full shadow-lg relative"
-                    size="icon"
-                >
-                    <MessageSquare className="h-6 w-6" />
-                    {displayConversations.some((c) => c.unread_count > 0) && (
-                        <Badge className="absolute -top-1 -right-1 h-5 w-5 p-0 text-xs flex items-center justify-center">
-                            {displayConversations.reduce((sum, c) => sum + c.unread_count, 0)}
-                        </Badge>
-                    )}
-                </Button>
+            <div className="fixed bottom-4 right-4 z-50 group">
+                <div className="relative">
+                    <Button
+                        onClick={onToggle}
+                        className="h-14 w-14 rounded-full shadow-lg relative"
+                        size="icon"
+                    >
+                        <MessageSquare className="h-6 w-6" />
+                        {displayConversations.some((c) => c.unread_count > 0) && (
+                            <Badge className="absolute -top-1 -right-1 h-5 w-5 p-0 text-xs flex items-center justify-center">
+                                {displayConversations.reduce((sum, c) => sum + c.unread_count, 0)}
+                            </Badge>
+                        )}
+                    </Button>
+                    
+                    {/* Tooltip */}
+                    <div className="absolute right-16 top-1/2 -translate-y-1/2 bg-gray-900 text-white text-sm px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap">
+                        Chat
+                    </div>
+                </div>
             </div>
         );
     }

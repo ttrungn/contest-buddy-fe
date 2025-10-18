@@ -2,6 +2,7 @@ import { Outlet } from "react-router-dom";
 import Navbar from "./Navbar";
 import Footer from "./Footer";
 import ChatUpdated from "../ChatUpdated";
+import FeedbackLink from "./FeedbackLink";
 import { useAppSelector } from "@/services/store/store";
 import { isOrganizer } from "@/lib/roleUtils";
 
@@ -17,6 +18,7 @@ export default function GuestLayout() {
                         <Outlet />
                     </div>
                 </main>
+                <FeedbackLink />
                 {isAuthenticated && !userIsOrganizer && <ChatUpdated />}
             </div>
             <Footer />
