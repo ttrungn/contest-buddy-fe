@@ -292,7 +292,7 @@ export default function Competition() {
 
               <div className="lg:hidden">{getStatusBadge()}</div>
 
-              <p className="text-lg text-muted-foreground leading-relaxed">
+              <p className="text-lg text-muted-foreground leading-relaxed whitespace-pre-line break-words">
                 {norm?.description}
               </p>
 
@@ -615,7 +615,7 @@ export default function Competition() {
                     <CardTitle>Mô tả chi tiết</CardTitle>
                   </CardHeader>
                   <CardContent className="prose prose-sm max-w-none">
-                    <p className="text-muted-foreground leading-relaxed">
+                    <p className="text-muted-foreground leading-relaxed whitespace-pre-line break-words">
                       {norm?.description}
                     </p>
                   </CardContent>
