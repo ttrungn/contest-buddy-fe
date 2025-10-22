@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { useNavigate, Link, useLocation } from "react-router-dom";
-import { useAppDispatch, useAppSelector } from "@/services/store/store";
-import { resendVerification, clearError } from "@/services/features/auth/authSlice";
+import { useAppDispatch, useAppSelector, persistor } from "@/services/store/store";
+import { resendVerification, clearError, logout } from "@/services/features/auth/authSlice";
 import { Mail, ArrowLeft, CheckCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { tokenUtils } from "@/services/constant/axiosInstance";
 
 export default function ResendVerification() {
     const navigate = useNavigate();
@@ -18,6 +19,17 @@ export default function ResendVerification() {
     // Get email from location state if available (from failed login)
     const [email, setEmail] = useState(location.state?.email || '');
     const [isSuccess, setIsSuccess] = useState(false);
+
+    const handleExit = async (path: string) => {
+        try {
+            dispatch(logout());
+            tokenUtils.clearTokens();
+            await persistor.purge();
+            localStorage.removeItem('persist:root');
+        } finally {
+            navigate(path, { replace: true });
+        }
+    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -108,7 +120,7 @@ export default function ResendVerification() {
                             </Button>
 
                             <Button
-                                onClick={() => navigate('/login')}
+                                onClick={() => handleExit('/login')}
                                 className="w-full"
                             >
                                 Quay lại đăng nhập
@@ -120,6 +132,7 @@ export default function ResendVerification() {
                         <div className="mt-6 pt-4 border-t border-gray-100">
                             <Link
                                 to="/"
+                                onClick={(e) => { e.preventDefault(); handleExit('/'); }}
                                 className="text-sm text-gray-500 hover:text-gray-700 transition-colors"
                             >
                                 ← Quay về trang chủ
@@ -138,7 +151,7 @@ export default function ResendVerification() {
                     {/* Back Button */}
                     <div className="mb-6">
                         <Button
-                            onClick={() => navigate('/login')}
+                            onClick={() => handleExit('/login')}
                             variant="ghost"
                             size="sm"
                             className="p-0 h-auto font-normal text-gray-600 hover:text-gray-900"
@@ -175,24 +188,7 @@ export default function ResendVerification() {
 
                     {/* Form */}
                     <form onSubmit={handleSubmit} className="space-y-6">
-                        <div className="space-y-2">
-                            <Label htmlFor="email">Email</Label>
-                            <Input
-                                id="email"
-                                type="email"
-                                placeholder="Nhập địa chỉ email của bạn"
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                                required
-                                className="w-full"
-                                disabled={!!email && !!location.state?.email}
-                            />
-                            {email && location.state?.email && (
-                                <p className="text-xs text-gray-500">
-                                    Email được tự động điền từ thông tin đăng nhập
-                                </p>
-                            )}
-                        </div>
+
 
                         <Button
                             type="submit"
@@ -230,6 +226,7 @@ export default function ResendVerification() {
                     <div className="mt-8 pt-6 border-t border-gray-100 text-center">
                         <Link
                             to="/"
+                            onClick={(e) => { e.preventDefault(); handleExit('/'); }}
                             className="text-sm text-gray-500 hover:text-gray-700 transition-colors"
                         >
                             ← Quay về trang chủ

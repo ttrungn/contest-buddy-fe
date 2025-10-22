@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link, useSearchParams } from "react-router-dom";
-import { useAppDispatch, useAppSelector } from "@/services/store/store";
-import { verifyEmail, clearError } from "@/services/features/auth/authSlice";
+import { useAppDispatch, useAppSelector, persistor } from "@/services/store/store";
+import { verifyEmail, clearError, logout } from "@/services/features/auth/authSlice";
 import { CheckCircle, XCircle, Loader2, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { tokenUtils } from "@/services/constant/axiosInstance";
 
 export default function EmailVerification() {
     const { token: pathToken } = useParams<{ token: string }>();
@@ -73,6 +74,17 @@ export default function EmailVerification() {
         }
     };
 
+    const handleExit = async (path: string) => {
+        try {
+            dispatch(logout());
+            tokenUtils.clearTokens();
+            await persistor.purge();
+            localStorage.removeItem('persist:root');
+        } finally {
+            navigate(path, { replace: true });
+        }
+    };
+
     const renderContent = () => {
         switch (verificationStatus) {
             case 'pending':
@@ -106,7 +118,7 @@ export default function EmailVerification() {
                             Bạn sẽ được chuyển hướng đến trang đăng nhập trong 3 giây...
                         </p>
                         <Button
-                            onClick={() => navigate('/login')}
+                            onClick={() => handleExit('/login')}
                             className="w-full"
                         >
                             Đăng nhập ngay
@@ -128,7 +140,7 @@ export default function EmailVerification() {
                         </p>
                         <div className="space-y-3">
                             <Button
-                                onClick={() => navigate('/resend-verification')}
+                                onClick={() => handleExit('/resend-verification')}
                                 className="w-full"
                                 variant="outline"
                             >
@@ -136,7 +148,7 @@ export default function EmailVerification() {
                                 Gửi lại email xác thực
                             </Button>
                             <Button
-                                onClick={() => navigate('/login')}
+                                onClick={() => handleExit('/login')}
                                 className="w-full"
                             >
                                 Quay lại đăng nhập
@@ -165,6 +177,7 @@ export default function EmailVerification() {
                     <div className="mt-8 pt-6 border-t border-gray-100">
                         <Link
                             to="/"
+                            onClick={(e) => { e.preventDefault(); handleExit('/'); }}
                             className="text-sm text-gray-500 hover:text-gray-700 transition-colors"
                         >
                             ← Quay về trang chủ
