@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   Bell,
   Calendar,
@@ -18,6 +18,7 @@ import {
   Building2,
   LogIn,
   UserPlus,
+  CreditCard,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,12 +40,14 @@ import { isAdmin, isOrganizer, isCustomer, isManager, getPrimaryRole, getRoleDis
 export default function Navbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
   const { balance } = useBalance();
   const { isAuthenticated, user } = useAppSelector((state) => state.auth);
   const dispatch = useAppDispatch();
 
   const handleLogout = () => {
     dispatch(logout());
+    navigate('/login');
   };
 
   const participantNavigation = [
@@ -171,6 +174,12 @@ export default function Navbar() {
                         <Link to="/organizer-profile" className="flex items-center">
                           <Building2 className="mr-2 h-4 w-4" />
                           <span>Thông tin Ban tổ chức</span>
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link to="/organizer/payment-history" className="flex items-center">
+                          <CreditCard className="mr-2 h-4 w-4" />
+                          <span>Lịch sử thanh toán</span>
                         </Link>
                       </DropdownMenuItem>
                     </>

@@ -11,6 +11,7 @@ import paymentReducer from "../features/payment/paymentSlice";
 import plansReducer from "../features/plans/plansSlice";
 import teamsReducer from "../features/teams/teamsSlice";
 import chatReducer from "../features/chat/chatSlice";
+import ordersReducer from "../features/orders/ordersSlice";
 
 const presistConfig = {
   key: "root",
@@ -38,6 +39,7 @@ const rootReducer = combineReducers({
   plans: plansReducer,
   teams: teamsReducer,
   chat: chatReducer,
+  orders: ordersReducer,
 });
 
 const persistedReducer = persistReducer(presistConfig, rootReducer);

@@ -7,6 +7,7 @@ import {
   COMPETITIONS_BY_STATUS_ENDPOINT,
   COMPETITION_DETAIL_ENDPOINT,
   COMPETITION_PARTICIPANTS_ENDPOINT,
+  COMPETITION_PARTICIPANTS_PAGINATED_ENDPOINT,
   ORGANIZER_COMPETITIONS_ENDPOINT,
 } from "@/services/constant/apiConfig";
 import {
@@ -23,12 +24,27 @@ interface ListResponse<T> extends ApiStatusMessage<T[]> {
 }
 
 interface ParticipantsItem {
+  _id: string;
+  id: string;
+  competition_id: string;
   user_id: string;
+  team_id: string | null;
+  registration_date: string;
   status: string;
+  payment_status: string;
+  submission_status: string;
+  __v: number;
   user: {
+    _id: string;
     id: string;
-    email: string;
+    username: string;
     full_name: string;
+    email: string;
+    bio: string;
+    city: string;
+    country: string;
+    rating: number;
+    avatar_url?: string;
   };
 }
 
@@ -37,6 +53,7 @@ interface CompetitionsState {
   featured: CompetitionSummary[];
   detail: CompetitionDetail | null;
   participants: ParticipantsItem[];
+  participantsPagination: Pagination | null;
   pagination: Pagination | null;
   isLoading: boolean;
   error: string | null;
@@ -47,6 +64,7 @@ const initialState: CompetitionsState = {
   featured: [],
   detail: null,
   participants: [],
+  participantsPagination: null,
   pagination: null,
   isLoading: false,
   error: null,
@@ -99,21 +117,23 @@ export const fetchCompetitions = createAsyncThunk<
     if (params.location) query.set("location", params.location);
     if (params.start_date) query.set("start_date", params.start_date);
     if (params.end_date) query.set("end_date", params.end_date);
-    if (params.isOnline !== undefined) query.set("isOnline", String(params.isOnline));
-    if (params.prizePool !== undefined) query.set("prizePool", String(params.prizePool));
+    if (params.isOnline !== undefined)
+      query.set("isOnline", String(params.isOnline));
+    if (params.prizePool !== undefined)
+      query.set("prizePool", String(params.prizePool));
     if (params.featured) query.set("featured", "true");
-    
+
     // Handle array parameters
     if (params.category?.length) {
-      params.category.forEach(cat => query.append("category", cat));
+      params.category.forEach((cat) => query.append("category", cat));
     }
     if (params.status?.length) {
-      params.status.forEach(status => query.append("status", status));
+      params.status.forEach((status) => query.append("status", status));
     }
     if (params.level?.length) {
-      params.level.forEach(level => query.append("level", level));
+      params.level.forEach((level) => query.append("level", level));
     }
-    
+
     const url = `${COMPETITIONS_ENDPOINT}${query.toString() ? `?${query.toString()}` : ""}`;
     const res = await api.get<ListResponse<CompetitionSummary>>(url);
     return { data: res.data || [], pagination: res.pagination };
@@ -274,12 +294,9 @@ export const fetchCompetitionParticipants = createAsyncThunk<
   { rejectValue: string }
 >(
   "competitions/fetchParticipants",
-  async ({ id, page, limit }, { rejectWithValue }) => {
+  async ({ id, page = 1, limit = 10 }, { rejectWithValue }) => {
     try {
-      const query = new URLSearchParams();
-      if (page) query.set("page", String(page));
-      if (limit) query.set("limit", String(limit));
-      const url = `${COMPETITION_PARTICIPANTS_ENDPOINT(id)}${query.toString() ? `?${query.toString()}` : ""}`;
+      const url = COMPETITION_PARTICIPANTS_PAGINATED_ENDPOINT(id, page, limit);
       const res = await api.get<ListResponse<ParticipantsItem>>(url);
       return { data: res.data || [], pagination: res.pagination };
     } catch (err: any) {
@@ -398,6 +415,7 @@ const competitionsSlice = createSlice({
       })
       .addCase(fetchCompetitionParticipants.fulfilled, (state, action) => {
         state.participants = action.payload.data;
+        state.participantsPagination = action.payload.pagination || null;
       })
       .addCase(createCompetition.rejected, (state, action) => {
         state.error = action.payload || "Failed to create competition";
@@ -406,9 +424,14 @@ const competitionsSlice = createSlice({
         // Update the competition in the list if it exists
         const updatedCompetition = action.payload.data;
         if (updatedCompetition) {
-          const index = state.list.findIndex(comp => comp.id === updatedCompetition.id);
+          const index = state.list.findIndex(
+            (comp) => comp.id === updatedCompetition.id,
+          );
           if (index !== -1) {
-            state.list[index] = { ...state.list[index], title: updatedCompetition.title };
+            state.list[index] = {
+              ...state.list[index],
+              title: updatedCompetition.title,
+            };
           }
           // Also update detail if it's the same competition
           if (state.detail?.id === updatedCompetition.id) {
@@ -422,7 +445,7 @@ const competitionsSlice = createSlice({
       .addCase(deleteCompetition.fulfilled, (state, action) => {
         // Remove the competition from the list
         const deletedId = action.meta.arg;
-        state.list = state.list.filter(comp => comp.id !== deletedId);
+        state.list = state.list.filter((comp) => comp.id !== deletedId);
         // Clear detail if it's the deleted competition
         if (state.detail?.id === deletedId) {
           state.detail = null;

@@ -27,6 +27,8 @@ import ResetPassword from "../pages/auth/ResetPassword";
 import Unauthorized from "../pages/auth/Unauthorized";
 import NotFound from "../pages/NotFound";
 import { PaymentCancel, PaymentSuccess } from "../pages/payment";
+import PaymentHistory from "../pages/payment/PaymentHistory";
+import PaymentDetail from "../pages/payment/PaymentDetail";
 import ProtectedRoute from "../components/layout/ProtectedRoute";
 import GuestLayout from "../components/layout/GuestLayout";
 import CustomerLayout from "../components/layout/CustomerLayout";
@@ -93,6 +95,8 @@ const AppRouter = () => {
                 <Route path="/organizer/competitions" element={<CompetitionManagement />} />
                 <Route path="/organizer/reports" element={<Reports />} />
                 <Route path="/organizer/billing" element={<OrganizerBilling />} />
+                <Route path="/organizer/payment-history" element={<PaymentHistory />} />
+                <Route path="/organizer/payment-history/:orderId" element={<PaymentDetail />} />
                 <Route path="/organizer-profile" element={<OrganizerProfile />} />
             </Route>
 
