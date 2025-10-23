@@ -49,9 +49,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
+import PaginationShadcn from "@/components/ui/pagination-shadcn";
 import { mockCompetitionManagement } from "@/lib/mockData";
 import { useAppDispatch, useAppSelector } from "@/services/store/store";
-import { fetchOrganizerCompetitions, fetchCompetitionDetail, updateCompetition, deleteCompetition } from "@/services/features/competitions/competitionsSlice";
+import { fetchOrganizerCompetitions, fetchCompetitionDetail, updateCompetition, deleteCompetition, fetchCompetitionParticipants } from "@/services/features/competitions/competitionsSlice";
 import { createCompetitionPayment, clearPaymentData } from "@/services/features/payment/paymentSlice";
 import CompetitionModals from "@/components/modals/CompetitionModals";
 import { CompetitionManagement, CompetitionParticipant, Competition, ManagementStatus, COMPETITION_PAYING_STATUSES, CompetitionPaymentStatus } from "@/types";
@@ -60,7 +61,7 @@ import { useToast } from "@/hooks/use-toast";
 
 export default function CompetitionManagementPage() {
   const dispatch = useAppDispatch();
-  const { list, isLoading, error } = useAppSelector((s) => s.competitions);
+  const { list, participants, participantsPagination, isLoading, error } = useAppSelector((s) => s.competitions);
   const { paymentUrl, paymentData, isLoading: isPaymentLoading } = useAppSelector((s) => s.payment);
   const { toast } = useToast();
 
@@ -112,14 +113,6 @@ export default function CompetitionManagementPage() {
   const competitions = list
     .filter((comp) => comp && comp.id) // Filter out null/undefined items
     .map((comp: any) => {
-      // Debug logging for API response
-      console.log('API Competition data:', {
-        id: comp.id,
-        title: comp.title,
-        payment_status: comp.payment_status,
-        paying_status: comp.paying_status,
-        fullData: comp
-      });
 
       return {
         id: `mgmt-${comp.id}`,
@@ -202,6 +195,8 @@ export default function CompetitionManagementPage() {
   );
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTab, setSelectedTab] = useState("overview");
+  const [participantsPage, setParticipantsPage] = useState(1);
+  const [participantsLimit, setParticipantsLimit] = useState(10);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
   const [competitionToUpdate, setCompetitionToUpdate] = useState(null);
@@ -221,6 +216,17 @@ export default function CompetitionManagementPage() {
       setSelectedCompetition(null);
     }
   }, [competitions]); // Only depend on competitions to avoid infinite loop
+
+  // Fetch participants when selected competition changes (without pagination params)
+  useEffect(() => {
+    if (selectedCompetition?.competitionId) {
+      dispatch(fetchCompetitionParticipants({
+        id: selectedCompetition.competitionId,
+        page: 1,
+        limit: 1000 // Get all participants, paginate on frontend
+      }));
+    }
+  }, [selectedCompetition?.competitionId, dispatch]);
 
   // Handle dialog closing - removed problematic useEffect
 
@@ -321,13 +327,20 @@ export default function CompetitionManagementPage() {
     return labels[status] || status;
   };
 
-  const filteredParticipants = selectedCompetition?.participants?.filter(
+  const filteredParticipants = participants.filter(
     (participant) =>
-      participant.user.fullName
+      participant.user.full_name
         .toLowerCase()
         .includes(searchQuery.toLowerCase()) ||
-      participant.user.school.toLowerCase().includes(searchQuery.toLowerCase()),
-  ) || [];
+      participant.user.email.toLowerCase().includes(searchQuery.toLowerCase()),
+  );
+
+  // Frontend pagination for participants
+  const totalParticipants = filteredParticipants.length;
+  const totalPages = Math.ceil(totalParticipants / participantsLimit);
+  const startIndex = (participantsPage - 1) * participantsLimit;
+  const endIndex = startIndex + participantsLimit;
+  const paginatedParticipants = filteredParticipants.slice(startIndex, endIndex);
 
   const handleUpdateCompetition = async (competition: any) => {
     try {
@@ -354,6 +367,16 @@ export default function CompetitionManagementPage() {
     setIsDeleteDialogOpen(false);
     setCompetitionToDelete(null);
   }, []);
+
+  // Pagination handlers
+  const handleParticipantsPageChange = (page: number) => {
+    setParticipantsPage(page);
+  };
+
+  const handleParticipantsItemsPerPageChange = (limit: number) => {
+    setParticipantsLimit(limit);
+    setParticipantsPage(1); // Reset to first page when changing items per page
+  };
 
   const confirmDeleteCompetition = async () => {
     if (!competitionToDelete) return;
@@ -460,16 +483,6 @@ export default function CompetitionManagementPage() {
       competition?.paymentStatus ||
       competition?.payingStatus;
 
-    // Debug logging
-    console.log('Competition payment status debug:', {
-      competitionId: competition?.competitionId,
-      title: competition?.competition?.title,
-      rawPaymentStatus: paymentStatus,
-      competitionPaymentStatus: competition?.competition?.paymentStatus,
-      competitionPayingStatus: competition?.competition?.payingStatus,
-      topLevelPaymentStatus: competition?.paymentStatus,
-      topLevelPayingStatus: competition?.payingStatus,
-    });
 
     // Convert Vietnamese status to English
     if (paymentStatus === "Đã thanh toán" || paymentStatus === "PAID") {
@@ -621,11 +634,7 @@ export default function CompetitionManagementPage() {
                 </div>
                 <div className="text-center">
                   <div className="text-2xl font-bold text-green-600">
-                    {competitions.reduce(
-                      (total, comp) =>
-                        total + comp.statistics.totalRegistrations,
-                      0,
-                    )}
+                    {participantsPagination?.total || 0}
                   </div>
                   <div className="text-sm text-muted-foreground">
                     Tổng đăng ký
@@ -751,19 +760,9 @@ export default function CompetitionManagementPage() {
                     <SelectContent>
                       {competitions.map((comp) => (
                         <SelectItem key={comp.id} value={comp.id}>
-                          <div className="flex items-center justify-between w-full">
-                            <span className="font-medium">
-                              {comp.competition.title}
-                            </span>
-                            <Badge
-                              className={cn(
-                                "ml-2",
-                                getCompetitionStatusColor(comp.status || "registration_open")
-                              )}
-                            >
-                              {getCompetitionStatusLabel(comp.status || "registration_open")}
-                            </Badge>
-                          </div>
+                          <span className="font-medium">
+                            {comp.competition.title}
+                          </span>
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -831,7 +830,7 @@ export default function CompetitionManagementPage() {
                       <div className="flex items-center space-x-2">
                         <Users className="h-4 w-4 text-muted-foreground" />
                         <span>
-                          {selectedCompetition?.statistics?.totalRegistrations || 0} đăng
+                          {participantsPagination?.total || 0} đăng
                           ký
                         </span>
                       </div>
@@ -870,7 +869,7 @@ export default function CompetitionManagementPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <StatCard
                   title="Tổng đăng ký"
-                  value={selectedCompetition?.statistics?.totalRegistrations || 0}
+                  value={participantsPagination?.total || 0}
                   icon={Users}
                   color="text-blue-600"
                   change="+12% so với tuần trước"
@@ -952,14 +951,14 @@ export default function CompetitionManagementPage() {
                       <div className="flex justify-between text-sm mb-2">
                         <span>Đăng ký</span>
                         <span>
-                          {selectedCompetition?.statistics?.totalRegistrations || 0}/
-                          {selectedCompetition?.settings?.maxParticipants || 0}
+                          {participantsPagination?.total || 0}/
+                          {selectedCompetition?.settings?.maxParticipants || 100}
                         </span>
                       </div>
                       <Progress
                         value={
-                          ((selectedCompetition?.statistics?.totalRegistrations || 0) /
-                            (selectedCompetition?.settings?.maxParticipants || 1)) *
+                          ((participantsPagination?.total || 0) /
+                            (selectedCompetition?.settings?.maxParticipants || 100)) *
                           100
                         }
                       />
@@ -1042,17 +1041,17 @@ export default function CompetitionManagementPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredParticipants.map((participant) => (
+                    {paginatedParticipants.map((participant) => (
                       <TableRow key={participant.id}>
                         <TableCell>
                           <div className="flex items-center space-x-3">
                             <Avatar className="h-8 w-8">
                               <AvatarImage
-                                src={participant.user.avatar}
-                                alt={participant.user.fullName}
+                                src={participant.user.avatar_url}
+                                alt={participant.user.full_name}
                               />
                               <AvatarFallback>
-                                {participant.user.fullName
+                                {participant.user.full_name
                                   .split(" ")
                                   .map((n) => n[0])
                                   .join("")}
@@ -1060,7 +1059,7 @@ export default function CompetitionManagementPage() {
                             </Avatar>
                             <div>
                               <p className="font-medium">
-                                {participant.user.fullName}
+                                {participant.user.full_name}
                               </p>
                               <p className="text-sm text-muted-foreground">
                                 @{participant.user.username}
@@ -1068,9 +1067,9 @@ export default function CompetitionManagementPage() {
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell>{participant.user.school}</TableCell>
+                        <TableCell>{participant.user.city}</TableCell>
                         <TableCell>
-                          {formatDate(participant.registrationDate)}
+                          {formatDate(new Date(participant.registration_date))}
                         </TableCell>
                         <TableCell>
                           <Badge className={getStatusColor(participant.status)}>
@@ -1079,24 +1078,24 @@ export default function CompetitionManagementPage() {
                         </TableCell>
                         <TableCell>
                           <Badge
-                            className={getStatusColor(participant.paymentStatus)}
+                            className={getStatusColor(participant.payment_status)}
                           >
-                            {getStatusLabel(participant.paymentStatus)}
+                            {getStatusLabel(participant.payment_status)}
                           </Badge>
                         </TableCell>
                         <TableCell>
                           <Badge
                             className={getStatusColor(
-                              participant.submissionStatus,
+                              participant.submission_status,
                             )}
                           >
-                            {getStatusLabel(participant.submissionStatus)}
+                            {getStatusLabel(participant.submission_status)}
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          {participant.score ? (
+                          {participant.user.rating ? (
                             <span className="font-medium">
-                              {participant.score}/100
+                              {participant.user.rating}/5
                             </span>
                           ) : (
                             "-"
@@ -1135,6 +1134,26 @@ export default function CompetitionManagementPage() {
                   </TableBody>
                 </Table>
               </Card>
+
+              {/* Pagination for participants */}
+              {totalParticipants > 0 && (
+                <PaginationShadcn
+                  currentPage={participantsPage}
+                  totalPages={totalPages}
+                  totalItems={totalParticipants}
+                  itemsPerPage={participantsLimit}
+                  onPageChange={handleParticipantsPageChange}
+                  onItemsPerPageChange={handleParticipantsItemsPerPageChange}
+                  showItemsPerPage={true}
+                  showInfo={true}
+                  maxVisiblePages={5}
+                  className="mt-4"
+                  previousLabel="Trước"
+                  nextLabel="Sau"
+                  itemsPerPageOptions={[5, 10, 20, 50]}
+                  infoTemplate="Hiển thị {start} - {end} trong tổng số {total} thí sinh"
+                />
+              )}
             </TabsContent>
 
           </Tabs>

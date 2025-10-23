@@ -51,6 +51,12 @@ export const COMPETITION_DETAIL_ENDPOINT = (id: string) =>
   `${BASE_URL}/api/competitions/${id}`;
 export const COMPETITION_PARTICIPANTS_ENDPOINT = (id: string) =>
   `${BASE_URL}/api/competitions/${id}/participants`;
+export const COMPETITION_PARTICIPANTS_PAGINATED_ENDPOINT = (
+  id: string,
+  page: number = 1,
+  limit: number = 10,
+) =>
+  `${BASE_URL}/api/competitions/${id}/participants?page=${page}&limit=${limit}`;
 export const COMPETITION_REGISTER_ENDPOINT = (id: string) =>
   `${BASE_URL}/api/competitions/${id}/register`;
 export const COMPETITION_PARTICIPANTS_CHECK_ENDPOINT = (id: string) =>
@@ -106,6 +112,11 @@ export const CHAT_MARK_READ_ENDPOINT = (conversationId: string) =>
 
 // Payment API endpoints
 export const COMPETITION_PAYMENT_ENDPOINT = `${BASE_URL}/api/orders/competition`;
+
+// Orders API endpoints
+export const ORDERS_ENDPOINT = `${BASE_URL}/api/orders`;
+export const ORDER_DETAIL_ENDPOINT = (orderId: string) =>
+  `${BASE_URL}/api/orders/${orderId}`;
 
 // Socket.IO endpoints
 export const CHAT_WEBSOCKET_ENDPOINT = (token: string) =>
