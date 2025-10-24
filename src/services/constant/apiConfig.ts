@@ -118,6 +118,23 @@ export const ORDERS_ENDPOINT = `${BASE_URL}/api/orders`;
 export const ORDER_DETAIL_ENDPOINT = (orderId: string) =>
   `${BASE_URL}/api/orders/${orderId}`;
 
+// Calendar API endpoints
+export const CALENDAR_EVENTS_ENDPOINT = (
+  from?: string,
+  to?: string,
+  type?: string,
+) => {
+  const params = new URLSearchParams();
+  if (from) params.append("from", from);
+  if (to) params.append("to", to);
+  if (type) params.append("type", type);
+  const queryString = params.toString();
+  return `${BASE_URL}/api/calendar/events${queryString ? `?${queryString}` : ""}`;
+};
+
+// Notification Settings API endpoints
+export const NOTIFICATION_SETTINGS_ENDPOINT = `${BASE_URL}/api/notifications/settings`;
+
 // Socket.IO endpoints
 export const CHAT_WEBSOCKET_ENDPOINT = (token: string) =>
   `https://contest-buddy-be-594444870778.asia-southeast1.run.app`;

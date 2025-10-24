@@ -9,6 +9,7 @@ import Community from "../pages/user/Community";
 import UserDetails from "../pages/user/UserDetails";
 import Profile from "../pages/user/Profile";
 import Calendar from "../pages/user/Calendar";
+import Settings from "../pages/user/Settings";
 import Teams from "../pages/competition/Teams";
 import TeamDetails from "../pages/competition/TeamDetails";
 import MyCompetitions from "../pages/competition/MyCompetitions";
@@ -87,7 +88,7 @@ const AppRouter = () => {
                 <Route path="/teams" element={<Teams />} />
                 <Route path="/teams/:id" element={<TeamDetails />} />
                 <Route path="/my-competitions" element={<MyCompetitions />} />
-                <Route path="/settings" element={<div className="container py-8">Cài đặt - Đang phát triển</div>} />
+                <Route path="/settings" element={<Settings />} />
             </Route>
 
             {/* Organizer area */}
