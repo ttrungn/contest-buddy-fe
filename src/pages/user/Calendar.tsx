@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Calendar as CalendarIcon,
   Plus,
@@ -25,10 +25,21 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import CompetitionCard from "@/components/CompetitionCard";
-import { mockCompetitions } from "@/lib/mockData";
-import { Competition } from "@/types";
+import { useAppDispatch, useAppSelector } from "@/services/store/store";
+import {
+  fetchCalendarEvents,
+  fetchParticipatedCompetitions,
+  selectCalendarEvents,
+  selectParticipatedCompetitions,
+  selectUpcomingDeadlines,
+  selectMonthlyStats,
+  selectCalendarLoading,
+  selectCalendarError
+} from "@/services/features/calendar/calendarSlice";
+import { CalendarEvent, ParticipatedCompetition } from "@/interfaces/ICalendar";
 
 export default function Calendar() {
+  const dispatch = useAppDispatch();
   const [selectedView, setSelectedView] = useState<"month" | "week" | "list">(
     "month",
   );
@@ -37,59 +48,143 @@ export default function Calendar() {
   const currentMonth = currentDate.getMonth();
   const currentYear = currentDate.getFullYear();
 
-  // Get competitions for current month (only registered and interested)
-  const thisMonthCompetitions = mockCompetitions.filter((comp) => {
-    const startDate = new Date(comp.startDate);
-    const regDate = new Date(comp.registrationDeadline);
-    const isRelevant = comp.isRegistered || comp.isInterested;
-    return (
-      isRelevant &&
-      ((startDate.getMonth() === currentMonth &&
-        startDate.getFullYear() === currentYear) ||
-        (regDate.getMonth() === currentMonth &&
-          regDate.getFullYear() === currentYear))
-    );
+  // Redux selectors
+  const calendarEvents = useAppSelector(selectCalendarEvents);
+  const participatedCompetitions = useAppSelector(selectParticipatedCompetitions);
+  const upcomingDeadlines = useAppSelector(selectUpcomingDeadlines);
+  const monthlyStats = useAppSelector(selectMonthlyStats);
+  const isLoading = useAppSelector(selectCalendarLoading);
+  const error = useAppSelector(selectCalendarError);
+
+  // Helper function to filter valid deadlines
+  const getValidDeadlines = () => {
+    return (upcomingDeadlines || []).filter((competition) => {
+      return (
+        competition &&
+        competition.title &&
+        competition.title.trim() !== "" &&
+        competition.registrationDeadline &&
+        competition.registrationDeadline.trim() !== ""
+      );
+    });
+  };
+
+  // Load data on component mount
+  useEffect(() => {
+    const startOfMonth = new Date(currentYear, currentMonth, 1);
+    const endOfMonth = new Date(currentYear, currentMonth + 1, 0);
+
+    // Fetch calendar events for current month
+    dispatch(fetchCalendarEvents({
+      from: startOfMonth.toISOString().split('T')[0],
+      to: endOfMonth.toISOString().split('T')[0],
+      type: 'competition'
+    }));
+
+    // Fetch participated competitions
+    dispatch(fetchParticipatedCompetitions());
+  }, [dispatch, currentYear, currentMonth]);
+
+  // Transform participated competitions to match the old format
+  const thisMonthCompetitions = (participatedCompetitions || []).map((item) => {
+    // Helper function to safely create dates
+    const safeDate = (dateString: string) => {
+      try {
+        const date = new Date(dateString);
+        return isNaN(date.getTime()) ? new Date() : date;
+      } catch {
+        return new Date();
+      }
+    };
+
+    return {
+      id: item.competition.id,
+      title: item.competition.title,
+      description: item.competition.description,
+      category: item.competition.category,
+      organizer: 'Unknown Organizer', // Default organizer since it's not in the API response
+      startDate: safeDate(item.competition.start_date),
+      endDate: safeDate(item.competition.end_date),
+      registrationDeadline: safeDate(item.competition.registration_deadline),
+      location: item.competition.location,
+      isOnline: false, // You might need to add this field to the API response
+      prizePool: item.competition.prize_pool_text,
+      participants: item.competition.participants_count,
+      maxParticipants: item.competition.max_participants,
+      level: item.competition.level,
+      imageUrl: item.competition.image_url,
+      website: '',
+      rules: '',
+      featured: item.competition.featured,
+      status: item.competition.status,
+      isRegistered: true,
+      isInterested: false,
+      registrationDate: safeDate(item.participation.registrationDate),
+      paymentStatus: item.participation.paymentStatus,
+      requiredSkills: [],
+      tags: [],
+    };
   });
 
-  const upcomingDeadlines = mockCompetitions
-    .filter((comp) => {
-      const deadline = new Date(comp.registrationDeadline);
+  const formatDate = (date: Date | string | undefined | null) => {
+    if (!date) return "N/A";
+
+    try {
+      const dateObj = new Date(date);
+      if (isNaN(dateObj.getTime())) {
+        return "N/A";
+      }
+      return new Intl.DateTimeFormat("vi-VN", {
+        weekday: "long",
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      }).format(dateObj);
+    } catch (error) {
+      console.error("Error formatting date:", error);
+      return "N/A";
+    }
+  };
+
+  const formatTime = (date: Date | string | undefined | null) => {
+    if (!date) return "N/A";
+
+    try {
+      const dateObj = new Date(date);
+      if (isNaN(dateObj.getTime())) {
+        return "N/A";
+      }
+      return new Intl.DateTimeFormat("vi-VN", {
+        hour: "2-digit",
+        minute: "2-digit",
+      }).format(dateObj);
+    } catch (error) {
+      console.error("Error formatting time:", error);
+      return "N/A";
+    }
+  };
+
+  const getDaysUntilDeadline = (deadline: Date | string | undefined | null) => {
+    if (!deadline) return 0;
+
+    try {
       const today = new Date();
-      const diffTime = deadline.getTime() - today.getTime();
+      const deadlineDate = new Date(deadline);
+
+      if (isNaN(deadlineDate.getTime())) {
+        return 0;
+      }
+
+      const diffTime = deadlineDate.getTime() - today.getTime();
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      const isRelevant = comp.isRegistered || comp.isInterested;
-      return isRelevant && diffDays > 0 && diffDays <= 7;
-    })
-    .sort(
-      (a, b) =>
-        new Date(a.registrationDeadline).getTime() -
-        new Date(b.registrationDeadline).getTime(),
-    );
-
-  const formatDate = (date: Date) => {
-    return new Intl.DateTimeFormat("vi-VN", {
-      weekday: "long",
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    }).format(new Date(date));
+      return diffDays;
+    } catch (error) {
+      console.error("Error calculating days until deadline:", error);
+      return 0;
+    }
   };
 
-  const formatTime = (date: Date) => {
-    return new Intl.DateTimeFormat("vi-VN", {
-      hour: "2-digit",
-      minute: "2-digit",
-    }).format(new Date(date));
-  };
-
-  const getDaysUntilDeadline = (deadline: Date) => {
-    const today = new Date();
-    const diffTime = new Date(deadline).getTime() - today.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays;
-  };
-
-  // Mock calendar grid for current month
+  // Generate calendar grid for current month
   const generateCalendarDays = () => {
     const firstDayOfMonth = new Date(currentYear, currentMonth, 1);
     const lastDayOfMonth = new Date(currentYear, currentMonth + 1, 0);
@@ -105,16 +200,27 @@ export default function Calendar() {
       date <= endDate;
       date.setDate(date.getDate() + 1)
     ) {
-      const dayCompetitions = mockCompetitions.filter((comp) => {
-        const startDate = new Date(comp.startDate);
-        const regDate = new Date(comp.registrationDeadline);
-        const currentDay = new Date(date);
-        const isRelevant = comp.isRegistered || comp.isInterested;
-        return (
-          isRelevant &&
-          (startDate.toDateString() === currentDay.toDateString() ||
-            regDate.toDateString() === currentDay.toDateString())
-        );
+      const dayCompetitions = thisMonthCompetitions.filter((comp) => {
+        try {
+          const startDate = new Date(comp.startDate);
+          const regDate = new Date(comp.registrationDeadline);
+          const endDate = new Date(comp.endDate);
+          const currentDay = new Date(date);
+
+          // Check if dates are valid
+          if (isNaN(startDate.getTime()) || isNaN(regDate.getTime()) || isNaN(endDate.getTime()) || isNaN(currentDay.getTime())) {
+            return false;
+          }
+
+          return (
+            startDate.toDateString() === currentDay.toDateString() ||
+            regDate.toDateString() === currentDay.toDateString() ||
+            endDate.toDateString() === currentDay.toDateString()
+          );
+        } catch (error) {
+          console.error("Error filtering day competitions:", error);
+          return false;
+        }
       });
 
       days.push({
@@ -131,16 +237,93 @@ export default function Calendar() {
   const weekDays = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
 
   const goToPreviousMonth = () => {
-    setCurrentDate(new Date(currentYear, currentMonth - 1, 1));
+    const newDate = new Date(currentYear, currentMonth - 1, 1);
+    setCurrentDate(newDate);
+
+    // Fetch data for the new month
+    const startOfMonth = new Date(newDate.getFullYear(), newDate.getMonth(), 1);
+    const endOfMonth = new Date(newDate.getFullYear(), newDate.getMonth() + 1, 0);
+    dispatch(fetchCalendarEvents({
+      from: startOfMonth.toISOString().split('T')[0],
+      to: endOfMonth.toISOString().split('T')[0],
+      type: 'competition'
+    }));
   };
 
   const goToNextMonth = () => {
-    setCurrentDate(new Date(currentYear, currentMonth + 1, 1));
+    const newDate = new Date(currentYear, currentMonth + 1, 1);
+    setCurrentDate(newDate);
+
+    // Fetch data for the new month
+    const startOfMonth = new Date(newDate.getFullYear(), newDate.getMonth(), 1);
+    const endOfMonth = new Date(newDate.getFullYear(), newDate.getMonth() + 1, 0);
+    dispatch(fetchCalendarEvents({
+      from: startOfMonth.toISOString().split('T')[0],
+      to: endOfMonth.toISOString().split('T')[0],
+      type: 'competition'
+    }));
   };
 
   const goToToday = () => {
-    setCurrentDate(new Date());
+    const today = new Date();
+    setCurrentDate(today);
+
+    // Fetch data for current month
+    const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    dispatch(fetchCalendarEvents({
+      from: startOfMonth.toISOString().split('T')[0],
+      to: endOfMonth.toISOString().split('T')[0],
+      type: 'competition'
+    }));
   };
+
+  // Show loading state
+  if (isLoading || !participatedCompetitions) {
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="container py-8">
+          <div className="flex items-center justify-center h-64">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+              <p className="text-muted-foreground">Đang tải lịch cuộc thi...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="container py-8">
+          <div className="flex items-center justify-center h-64">
+            <div className="text-center">
+              <div className="text-red-500 mb-4">
+                <Bell className="h-12 w-12 mx-auto" />
+              </div>
+              <h2 className="text-xl font-semibold mb-2">Lỗi tải dữ liệu</h2>
+              <p className="text-muted-foreground mb-4">{error}</p>
+              <Button onClick={() => {
+                const startOfMonth = new Date(currentYear, currentMonth, 1);
+                const endOfMonth = new Date(currentYear, currentMonth + 1, 0);
+                dispatch(fetchCalendarEvents({
+                  from: startOfMonth.toISOString().split('T')[0],
+                  to: endOfMonth.toISOString().split('T')[0],
+                  type: 'competition'
+                }));
+                dispatch(fetchParticipatedCompetitions());
+              }}>
+                Thử lại
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -165,12 +348,12 @@ export default function Calendar() {
                   Deadline sắp tới
                 </CardTitle>
                 <Badge variant="secondary">
-                  {upcomingDeadlines.length} cuộc thi
+                  {getValidDeadlines().length} cuộc thi
                 </Badge>
               </div>
             </CardHeader>
             <CardContent>
-              {upcomingDeadlines.length === 0 ? (
+              {getValidDeadlines().length === 0 ? (
                 <div className="text-center py-8">
                   <Bell className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
                   <p className="text-muted-foreground">
@@ -182,7 +365,7 @@ export default function Calendar() {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {upcomingDeadlines.map((competition) => {
+                  {getValidDeadlines().map((competition) => {
                     const daysLeft = getDaysUntilDeadline(
                       competition.registrationDeadline,
                     );
@@ -250,7 +433,7 @@ export default function Calendar() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="text-center p-3 bg-blue-50 rounded-lg">
                   <div className="text-2xl font-bold text-blue-600">
-                    {thisMonthCompetitions.length}
+                    {monthlyStats?.totalCompetitions || thisMonthCompetitions.length}
                   </div>
                   <div className="text-sm text-muted-foreground">
                     Cuộc thi
@@ -258,31 +441,31 @@ export default function Calendar() {
                 </div>
                 <div className="text-center p-3 bg-orange-50 rounded-lg">
                   <div className="text-2xl font-bold text-orange-600">
-                    {upcomingDeadlines.length}
+                    {monthlyStats?.upcomingDeadlines || upcomingDeadlines.length}
                   </div>
                   <div className="text-sm text-muted-foreground">
                     Deadline sắp tới
                   </div>
                 </div>
               </div>
-              
+
               <div className="space-y-3">
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">Cuộc thi đã đăng ký:</span>
                   <span className="font-medium">
-                    {thisMonthCompetitions.filter(comp => comp.isRegistered).length}
+                    {monthlyStats?.registered || thisMonthCompetitions.filter(comp => comp.isRegistered).length}
                   </span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">Cuộc thi quan tâm:</span>
                   <span className="font-medium">
-                    {thisMonthCompetitions.filter(comp => comp.isInterested && !comp.isRegistered).length}
+                    {monthlyStats?.interested || thisMonthCompetitions.filter(comp => comp.isInterested && !comp.isRegistered).length}
                   </span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">Cuộc thi online:</span>
                   <span className="font-medium">
-                    {thisMonthCompetitions.filter(comp => comp.isOnline).length}
+                    {monthlyStats?.online || thisMonthCompetitions.filter(comp => comp.isOnline).length}
                   </span>
                 </div>
               </div>
@@ -382,20 +565,17 @@ export default function Calendar() {
                   {calendarDays.map((day, index) => (
                     <div
                       key={index}
-                      className={`min-h-[100px] p-2 border rounded-lg ${
-                        day.isCurrentMonth ? "bg-background" : "bg-muted/30"
-                      } ${
-                        day.date.toDateString() === currentDate.toDateString()
+                      className={`min-h-[100px] p-2 border rounded-lg ${day.isCurrentMonth ? "bg-background" : "bg-muted/30"
+                        } ${day.date.toDateString() === currentDate.toDateString()
                           ? "ring-2 ring-primary"
                           : ""
-                      }`}
+                        }`}
                     >
                       <div
-                        className={`text-sm font-medium mb-1 ${
-                          day.isCurrentMonth
-                            ? "text-foreground"
-                            : "text-muted-foreground"
-                        }`}
+                        className={`text-sm font-medium mb-1 ${day.isCurrentMonth
+                          ? "text-foreground"
+                          : "text-muted-foreground"
+                          }`}
                       >
                         {day.date.getDate()}
                       </div>
@@ -416,15 +596,14 @@ export default function Calendar() {
                           return (
                             <div
                               key={comp.id}
-                              className={`text-xs p-1 rounded truncate cursor-pointer hover:opacity-80 transition-opacity ${
-                                isDeadline
-                                  ? "bg-orange-100 text-orange-700 border border-orange-200"
-                                  : isEnd
-                                    ? "bg-green-100 text-green-700 border border-green-200"
+                              className={`text-xs p-1 rounded truncate cursor-pointer hover:opacity-80 transition-opacity ${isDeadline
+                                ? "bg-orange-100 text-orange-700 border border-orange-200"
+                                : isEnd
+                                  ? "bg-green-100 text-green-700 border border-green-200"
                                   : comp.isRegistered
                                     ? "bg-blue-100 text-blue-700 border border-blue-200"
                                     : "bg-purple-100 text-purple-700 border border-purple-200"
-                              }`}
+                                }`}
                               title={`${comp.title} - ${isDeadline ? 'Hạn đăng ký' : isEnd ? 'Kết thúc' : comp.isRegistered ? 'Đã đăng ký' : 'Quan tâm'}`}
                             >
                               {comp.title}
