@@ -55,6 +55,7 @@ export default function CompetitionThumbnail({ competition, className }: Competi
     return new Intl.DateTimeFormat("vi-VN", {
       day: "2-digit",
       month: "2-digit",
+      timeZone: "UTC"
     }).format(new Date(date));
   };
 
@@ -90,7 +91,7 @@ export default function CompetitionThumbnail({ competition, className }: Competi
               )} />
             </div>
           </div>
-          
+
           {/* Status Badge */}
           <div className="bg-white/20 backdrop-blur-sm rounded-full px-3 py-1">
             <span className="text-xs font-medium">
@@ -123,7 +124,7 @@ export default function CompetitionThumbnail({ competition, className }: Competi
               </span>
             </div>
           </div>
-          
+
           <div className="flex items-center space-x-1">
             <Calendar className="h-3 w-3" />
             <span>{formatDate(competition.startDate)}</span>
