@@ -19,6 +19,7 @@ import CompetitionManagement from "../pages/organizer/CompetitionManagement";
 import OrganizerBilling from "../pages/organizer/OrganizerBilling";
 import Reports from "../pages/organizer/Reports";
 import Analytics from "../pages/organizer/Analytics";
+import { PlanManagement } from "../pages/admin";
 import About from "../pages/About";
 import Login from "../pages/auth/Login";
 import EmailVerification from "../pages/auth/EmailVerification";
@@ -105,6 +106,7 @@ const AppRouter = () => {
             <Route element={<ProtectedRoute requireAuth allowedRoles={["admin"]}><CustomerLayout /></ProtectedRoute>}>
                 <Route path="/admin/users" element={<Analytics />} />
                 <Route path="/admin/analytics" element={<Analytics />} />
+                <Route path="/admin/plans" element={<PlanManagement />} />
                 <Route path="/admin/competitions" element={<Navigate to="/organizer/competitions" replace />} />
                 <Route path="/admin/reports" element={<Navigate to="/organizer/reports" replace />} />
                 <Route path="/admin/billing" element={<Navigate to="/organizer/billing" replace />} />

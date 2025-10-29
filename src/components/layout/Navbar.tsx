@@ -63,6 +63,11 @@ export default function Navbar() {
     { name: "Thanh toán", href: "/organizer/billing", icon: Briefcase },
   ];
 
+  const adminNavigation = [
+    { name: "Quản lý gói", href: "/admin/plans", icon: Briefcase },
+    { name: "Phân tích", href: "/admin/analytics", icon: BarChart3 },
+  ];
+
   // Determine navigation based on user role from auth state
   const userIsAdmin = isAdmin(user);
   const userIsOrganizer = isOrganizer(user);
@@ -70,8 +75,14 @@ export default function Navbar() {
   const userIsManager = isManager(user);
   const primaryRole = getPrimaryRole(user);
 
-  // Navigation logic: Admin and Organizer see management navigation, Customer sees participant navigation
-  const currentNavigation = isAuthenticated && userIsManager ? organizerNavigation : participantNavigation;
+  // Navigation logic: Admin uses admin nav, Organizer uses organizer nav, Customer uses participant nav
+  const currentNavigation = isAuthenticated
+    ? userIsAdmin
+      ? adminNavigation
+      : userIsManager
+        ? organizerNavigation
+        : participantNavigation
+    : participantNavigation;
 
   const isActivePage = (href: string) => {
     if (href === "/") return location.pathname === "/";
@@ -162,7 +173,7 @@ export default function Navbar() {
                       </div>
                     </div>
                   </div>
-                  {userIsManager ? (
+                  {userIsAdmin ? null : userIsManager ? (
                     <>
                       <div className="px-3 py-2 border-b">
                         <div className="flex items-center justify-between">
@@ -211,12 +222,14 @@ export default function Navbar() {
                       </DropdownMenuItem>
                     </>
                   )}
-                  <DropdownMenuItem asChild>
-                    <Link to="/settings" className="flex items-center">
-                      <Settings className="mr-2 h-4 w-4" />
-                      <span>Cài đặt</span>
-                    </Link>
-                  </DropdownMenuItem>
+                  {!userIsAdmin && (
+                    <DropdownMenuItem asChild>
+                      <Link to="/settings" className="flex items-center">
+                        <Settings className="mr-2 h-4 w-4" />
+                        <span>Cài đặt</span>
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleLogout}>
                     <span>Đăng xuất</span>
