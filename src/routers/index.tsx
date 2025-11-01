@@ -10,6 +10,7 @@ import UserDetails from "../pages/user/UserDetails";
 import Profile from "../pages/user/Profile";
 import Calendar from "../pages/user/Calendar";
 import Settings from "../pages/user/Settings";
+import { SubscriptionPlans, MySubscription, SubscriptionHistory } from "../pages/user";
 import Teams from "../pages/competition/Teams";
 import TeamDetails from "../pages/competition/TeamDetails";
 import MyCompetitions from "../pages/competition/MyCompetitions";
@@ -18,8 +19,7 @@ import OrganizerProfile from "../pages/organizer/OrganizerProfile";
 import CompetitionManagement from "../pages/organizer/CompetitionManagement";
 import OrganizerBilling from "../pages/organizer/OrganizerBilling";
 import Reports from "../pages/organizer/Reports";
-import Analytics from "../pages/organizer/Analytics";
-import { PlanManagement } from "../pages/admin";
+import { PlanManagement, Analytics, UserSubscriptionPlanManagement } from "../pages/admin";
 import About from "../pages/About";
 import Login from "../pages/auth/Login";
 import EmailVerification from "../pages/auth/EmailVerification";
@@ -90,6 +90,9 @@ const AppRouter = () => {
                 <Route path="/teams/:id" element={<TeamDetails />} />
                 <Route path="/my-competitions" element={<MyCompetitions />} />
                 <Route path="/settings" element={<Settings />} />
+                <Route path="/subscriptions" element={<SubscriptionPlans />} />
+                <Route path="/subscriptions/my" element={<MySubscription />} />
+                <Route path="/subscriptions/history" element={<SubscriptionHistory />} />
             </Route>
 
             {/* Organizer area */}
@@ -104,9 +107,10 @@ const AppRouter = () => {
 
             {/* Admin area */}
             <Route element={<ProtectedRoute requireAuth allowedRoles={["admin"]}><CustomerLayout /></ProtectedRoute>}>
-                <Route path="/admin/users" element={<Analytics />} />
                 <Route path="/admin/analytics" element={<Analytics />} />
                 <Route path="/admin/plans" element={<PlanManagement />} />
+                <Route path="/admin/user-subscriptions" element={<UserSubscriptionPlanManagement />} />
+                <Route path="/admin/users" element={<Navigate to="/admin/analytics" replace />} />
                 <Route path="/admin/competitions" element={<Navigate to="/organizer/competitions" replace />} />
                 <Route path="/admin/reports" element={<Navigate to="/organizer/reports" replace />} />
                 <Route path="/admin/billing" element={<Navigate to="/organizer/billing" replace />} />

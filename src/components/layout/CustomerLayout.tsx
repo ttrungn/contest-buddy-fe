@@ -4,11 +4,13 @@ import Footer from "./Footer";
 import ChatUpdated from "../ChatUpdated";
 import FeedbackLink from "./FeedbackLink";
 import { useAppSelector } from "@/services/store/store";
-import { isOrganizer } from "@/lib/roleUtils";
+import { isOrganizer, isAdmin } from "@/lib/roleUtils";
 
 export default function CustomerLayout() {
     const { isAuthenticated, user } = useAppSelector((s) => s.auth);
     const userIsOrganizer = isAuthenticated && isOrganizer(user);
+    const userIsAdmin = isAuthenticated && isAdmin(user);
+    const shouldShowChat = isAuthenticated && !userIsOrganizer && !userIsAdmin;
     return (
         <>
             <Navbar />
@@ -19,7 +21,7 @@ export default function CustomerLayout() {
                     </div>
                 </main>
                 <FeedbackLink />
-                {isAuthenticated && !userIsOrganizer && <ChatUpdated />}
+                {shouldShowChat && <ChatUpdated />}
             </div>
             <Footer />
         </>

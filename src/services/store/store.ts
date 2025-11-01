@@ -14,6 +14,9 @@ import chatReducer from "../features/chat/chatSlice";
 import ordersReducer from "../features/orders/ordersSlice";
 import calendarReducer from "../features/calendar/calendarSlice";
 import notificationReducer from "../features/notifications/notificationSlice";
+import analyticsReducer from "../features/analytics/analyticsSlice";
+import userSubscriptionPlansReducer from "../features/userSubscriptions/userSubscriptionPlansSlice";
+import userSubscriptionsReducer from "../features/userSubscriptions/userSubscriptionsSlice";
 
 const presistConfig = {
   key: "root",
@@ -46,6 +49,9 @@ const rootReducer = combineReducers({
   orders: ordersReducer,
   calendar: calendarReducer,
   notifications: notificationReducer,
+  analytics: analyticsReducer,
+  userSubscriptionPlans: userSubscriptionPlansReducer,
+  userSubscriptions: userSubscriptionsReducer,
 });
 
 const persistedReducer = persistReducer(presistConfig, rootReducer);

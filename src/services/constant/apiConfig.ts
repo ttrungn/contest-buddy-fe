@@ -100,6 +100,20 @@ export const TEAM_MEMBER_DELETE_ENDPOINT = (teamId: string, memberId: string) =>
 // Plans
 export const PLANS_ENDPOINT = `${BASE_URL}/api/plans`;
 
+// User Subscription Plans
+export const USER_SUBSCRIPTION_PLANS_ENDPOINT = `${BASE_URL}/api/user-subscriptions/plans`;
+export const USER_SUBSCRIPTION_PLAN_ENDPOINT = (planId: string) =>
+  `${BASE_URL}/api/user-subscriptions/plans/${planId}`;
+
+// User Subscriptions
+export const USER_SUBSCRIPTION_CURRENT_ENDPOINT = `${BASE_URL}/api/user-subscriptions/current`;
+export const USER_SUBSCRIPTION_HISTORY_ENDPOINT = `${BASE_URL}/api/user-subscriptions/history`;
+export const USER_SUBSCRIPTION_PURCHASE_ENDPOINT = `${BASE_URL}/api/user-subscriptions/purchase`;
+export const USER_SUBSCRIPTION_CANCEL_ENDPOINT = (subscriptionId: string) =>
+  `${BASE_URL}/api/user-subscriptions/${subscriptionId}/cancel`;
+export const USER_SUBSCRIPTION_FEATURE_CHECK_ENDPOINT = (featureKey: string) =>
+  `${BASE_URL}/api/user-subscriptions/features/${featureKey}/check`;
+
 // Chat API endpoints
 export const CHAT_CONVERSATIONS_ENDPOINT = `${BASE_URL}/api/chat/conversations`;
 export const CHAT_CONVERSATIONS_DIRECT_ENDPOINT = `${BASE_URL}/api/chat/conversations/direct`;
@@ -138,3 +152,89 @@ export const NOTIFICATION_SETTINGS_ENDPOINT = `${BASE_URL}/api/notifications/set
 // Socket.IO endpoints
 export const CHAT_WEBSOCKET_ENDPOINT = (token: string) =>
   `https://contest-buddy-be-594444870778.asia-southeast1.run.app`;
+
+// Admin Analytics API endpoints
+// User Statistics
+export const ANALYTICS_USERS_TIME_RANGE_ENDPOINT = (
+  startDate: string,
+  endDate: string,
+) =>
+  `${BASE_URL}/api/analytics/users/time-range?startDate=${startDate}&endDate=${endDate}`;
+
+export const ANALYTICS_USERS_PERIOD_ENDPOINT = (
+  year: number,
+  groupBy: "week" | "month" = "month",
+) => `${BASE_URL}/api/analytics/users/period?year=${year}&groupBy=${groupBy}`;
+
+export const ANALYTICS_USERS_YEAR_ENDPOINT = (
+  startYear?: number,
+  endYear?: number,
+) => {
+  const params = new URLSearchParams();
+  if (startYear) params.append("startYear", startYear.toString());
+  if (endYear) params.append("endYear", endYear.toString());
+  const queryString = params.toString();
+  return `${BASE_URL}/api/analytics/users/year${queryString ? `?${queryString}` : ""}`;
+};
+
+// Revenue Statistics
+export const ANALYTICS_REVENUE_TIME_RANGE_ENDPOINT = (
+  startDate: string,
+  endDate: string,
+) =>
+  `${BASE_URL}/api/analytics/revenue/time-range?startDate=${startDate}&endDate=${endDate}`;
+
+export const ANALYTICS_REVENUE_PERIOD_ENDPOINT = (
+  year: number,
+  groupBy: "week" | "month" = "month",
+) => `${BASE_URL}/api/analytics/revenue/period?year=${year}&groupBy=${groupBy}`;
+
+export const ANALYTICS_REVENUE_YEAR_ENDPOINT = (
+  startYear?: number,
+  endYear?: number,
+) => {
+  const params = new URLSearchParams();
+  if (startYear) params.append("startYear", startYear.toString());
+  if (endYear) params.append("endYear", endYear.toString());
+  const queryString = params.toString();
+  return `${BASE_URL}/api/analytics/revenue/year${queryString ? `?${queryString}` : ""}`;
+};
+
+// Plan Purchase Statistics
+export const ANALYTICS_PLANS_TIME_RANGE_ENDPOINT = (
+  startDate: string,
+  endDate: string,
+) =>
+  `${BASE_URL}/api/analytics/plans/time-range?startDate=${startDate}&endDate=${endDate}`;
+
+export const ANALYTICS_PLANS_PERIOD_ENDPOINT = (
+  year: number,
+  groupBy: "week" | "month" = "month",
+) => `${BASE_URL}/api/analytics/plans/period?year=${year}&groupBy=${groupBy}`;
+
+export const ANALYTICS_PLANS_YEAR_ENDPOINT = (
+  startYear?: number,
+  endYear?: number,
+) => {
+  const params = new URLSearchParams();
+  if (startYear) params.append("startYear", startYear.toString());
+  if (endYear) params.append("endYear", endYear.toString());
+  const queryString = params.toString();
+  return `${BASE_URL}/api/analytics/plans/year${queryString ? `?${queryString}` : ""}`;
+};
+
+// Subscription Dashboard
+export const ANALYTICS_SUBSCRIPTION_DASHBOARD_ENDPOINT = (params?: {
+  start_date?: string;
+  end_date?: string;
+  status?: "active" | "cancelled" | "expired" | "pending";
+  plan_id?: string;
+}) => {
+  const queryParams = new URLSearchParams();
+  if (params?.start_date) queryParams.append("start_date", params.start_date);
+  if (params?.end_date) queryParams.append("end_date", params.end_date);
+  if (params?.status) queryParams.append("status", params.status);
+  if (params?.plan_id) queryParams.append("plan_id", params.plan_id);
+  const queryString = queryParams.toString();
+  return `${BASE_URL}/api/user-subscriptions/dashboard${queryString ? `?${queryString}` : ""}`;
+};

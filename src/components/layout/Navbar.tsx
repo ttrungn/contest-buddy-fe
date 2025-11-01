@@ -54,6 +54,7 @@ export default function Navbar() {
     { name: "Trang chủ", href: "/home", icon: Rocket },
     { name: "Cuộc thi", href: "/competitions", icon: Trophy },
     { name: "Cộng đồng", href: "/community", icon: Users },
+    { name: "Subscriptions", href: "/subscriptions", icon: CreditCard },
     { name: "About", href: "/about", icon: Info },
   ];
 
@@ -64,8 +65,10 @@ export default function Navbar() {
   ];
 
   const adminNavigation = [
-    { name: "Quản lý gói", href: "/admin/plans", icon: Briefcase },
     { name: "Phân tích", href: "/admin/analytics", icon: BarChart3 },
+    { name: "Quản lý gói", href: "/admin/plans", icon: Briefcase },
+    { name: "User Subscriptions", href: "/admin/user-subscriptions", icon: CreditCard },
+
   ];
 
   // Determine navigation based on user role from auth state
@@ -218,6 +221,19 @@ export default function Navbar() {
                         <Link to="/teams" className="flex items-center">
                           <Users className="mr-2 h-4 w-4" />
                           <span>Nhóm</span>
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem asChild>
+                        <Link to="/subscriptions/my" className="flex items-center">
+                          <CreditCard className="mr-2 h-4 w-4" />
+                          <span>Gói Subscription của tôi</span>
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link to="/subscriptions/history" className="flex items-center">
+                          <Calendar className="mr-2 h-4 w-4" />
+                          <span>Lịch sử Subscription</span>
                         </Link>
                       </DropdownMenuItem>
                     </>
