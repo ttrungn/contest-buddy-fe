@@ -32,7 +32,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
-import { useBalance } from "@/contexts/BalanceContext";
 import { useAppSelector, useAppDispatch } from "@/services/store/store";
 import { logout } from "@/services/features/auth/authSlice";
 import { isAdmin, isOrganizer, isCustomer, isManager, getPrimaryRole, getRoleDisplayName, getRoleBadgeVariant } from "@/lib/roleUtils";
@@ -41,7 +40,6 @@ export default function Navbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const { balance } = useBalance();
   const { isAuthenticated, user } = useAppSelector((state) => state.auth);
   const dispatch = useAppDispatch();
 
@@ -178,22 +176,10 @@ export default function Navbar() {
                   </div>
                   {userIsAdmin ? null : userIsManager ? (
                     <>
-                      <div className="px-3 py-2 border-b">
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm font-medium">Số dư:</span>
-                          <span className="text-sm font-bold text-green-600">{balance.toLocaleString()} VNĐ</span>
-                        </div>
-                      </div>
                       <DropdownMenuItem asChild>
                         <Link to="/organizer-profile" className="flex items-center">
                           <Building2 className="mr-2 h-4 w-4" />
                           <span>Thông tin Ban tổ chức</span>
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem asChild>
-                        <Link to="/organizer/payment-history" className="flex items-center">
-                          <CreditCard className="mr-2 h-4 w-4" />
-                          <span>Lịch sử thanh toán</span>
                         </Link>
                       </DropdownMenuItem>
                     </>
