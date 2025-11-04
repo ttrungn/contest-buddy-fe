@@ -41,6 +41,7 @@ import {
   fetchUserPeriodStats,
   fetchRevenueTimeRangeStats,
   fetchRevenuePeriodStats,
+  fetchPlansTimeRangeStats,
   fetchSubscriptionDashboard,
   clearAnalyticsError,
 } from "@/services/features/analytics/analyticsSlice";
@@ -53,6 +54,7 @@ export default function Analytics() {
     userPeriod,
     revenueTimeRange,
     revenuePeriod,
+    plansTimeRange,
     subscriptionDashboard,
     isLoading,
     error,
@@ -84,15 +86,9 @@ export default function Analytics() {
     const startDateStr = startDate.toISOString().split("T")[0];
     const endDateStr = endDate.toISOString().split("T")[0];
 
-    dispatch(
-      fetchUserTimeRangeStats({ startDate: startDateStr, endDate: endDateStr }),
-    );
-    dispatch(
-      fetchRevenueTimeRangeStats({
-        startDate: startDateStr,
-        endDate: endDateStr,
-      }),
-    );
+    dispatch(fetchUserTimeRangeStats({ startDate: startDateStr, endDate: endDateStr }));
+    dispatch(fetchRevenueTimeRangeStats({ startDate: startDateStr, endDate: endDateStr }));
+    dispatch(fetchPlansTimeRangeStats({ startDate: startDateStr, endDate: endDateStr }));
     dispatch(fetchSubscriptionDashboard(undefined));
   }, [dispatch, selectedPeriod]);
 
@@ -121,18 +117,8 @@ export default function Analytics() {
 
   const getMonthName = (month: number) => {
     const months = [
-      "T1",
-      "T2",
-      "T3",
-      "T4",
-      "T5",
-      "T6",
-      "T7",
-      "T8",
-      "T9",
-      "T10",
-      "T11",
-      "T12",
+      "T1", "T2", "T3", "T4", "T5", "T6",
+      "T7", "T8", "T9", "T10", "T11", "T12",
     ];
     return months[month - 1] || `T${month}`;
   };
@@ -141,14 +127,11 @@ export default function Analytics() {
   const totalRevenue = revenueTimeRange?.totalRevenue || 0;
   const totalOrders = revenueTimeRange?.totalOrders || 0;
   const totalUsers = userTimeRange?.total || 0;
-  const totalSubscriptions =
-    subscriptionDashboard?.summary.totalSubscriptions || 0;
-  const activeSubscriptions =
-    subscriptionDashboard?.summary.activeSubscriptions || 0;
+  const totalSubscriptions = subscriptionDashboard?.summary.totalSubscriptions || 0;
+  const activeSubscriptions = subscriptionDashboard?.summary.activeSubscriptions || 0;
 
   // Calculate conversion rate (simplified)
-  const conversionRate =
-    totalUsers > 0 ? (totalSubscriptions / totalUsers) * 100 : 0;
+  const conversionRate = totalUsers > 0 ? ((totalSubscriptions / totalUsers) * 100) : 0;
 
   // Prepare chart data for registration trend (last 6 months)
   const prepareRegistrationTrendData = () => {
@@ -202,9 +185,7 @@ export default function Analytics() {
     for (let i = 5; i >= 0; i--) {
       const month = currentMonth - i;
       const monthNum = month <= 0 ? month + 12 : month;
-      const revenueItem = revenuePeriod.periods.find(
-        (p) => p.month === monthNum,
-      );
+      const revenueItem = revenuePeriod.periods.find((p) => p.month === monthNum);
       data.push({
         month: getMonthName(monthNum),
         value: revenueItem?.totalRevenue || 0,
@@ -254,9 +235,7 @@ export default function Analytics() {
                 >
                   {Math.abs(change)}%
                 </span>
-                <span className="text-xs text-muted-foreground ml-1">
-                  {period}
-                </span>
+                <span className="text-xs text-muted-foreground ml-1">{period}</span>
               </div>
             )}
           </div>
@@ -293,15 +272,11 @@ export default function Analytics() {
             const maxValue = Math.max(...values, 1);
             // Calculate height in pixels (container is h-64 = 256px, minus padding top 24px = 232px)
             const availableHeight = 232;
-            const heightPx =
-              maxValue > 0 && item.value > 0
-                ? Math.max((item.value / maxValue) * availableHeight, 4)
-                : 0;
+            const heightPx = maxValue > 0 && item.value > 0
+              ? Math.max((item.value / maxValue) * availableHeight, 4)
+              : 0;
             return (
-              <div
-                key={index}
-                className="flex-1 flex flex-col items-center justify-end h-full"
-              >
+              <div key={index} className="flex-1 flex flex-col items-center justify-end h-full">
                 <div className="text-xs text-muted-foreground mb-1 h-5 flex items-center">
                   {format === "currency"
                     ? formatCurrency(item.value)
@@ -316,14 +291,9 @@ export default function Analytics() {
                         ? "bg-green-500"
                         : "bg-purple-500",
                   )}
-                  style={{
-                    height: `${heightPx}px`,
-                    minHeight: item.value > 0 ? "4px" : "0px",
-                  }}
+                  style={{ height: `${heightPx}px`, minHeight: item.value > 0 ? "4px" : "0px" }}
                 />
-                <div className="text-xs mt-1 font-medium h-5 flex items-center">
-                  {item.month}
-                </div>
+                <div className="text-xs mt-1 font-medium h-5 flex items-center">{item.month}</div>
               </div>
             );
           })}
@@ -372,14 +342,8 @@ export default function Analytics() {
                 <SelectItem value="1 năm qua">1 năm qua</SelectItem>
               </SelectContent>
             </Select>
-            <Button
-              variant="outline"
-              onClick={() => window.location.reload()}
-              disabled={isLoading}
-            >
-              <RefreshCw
-                className={cn("h-4 w-4 mr-2", isLoading && "animate-spin")}
-              />
+            <Button variant="outline" onClick={() => window.location.reload()} disabled={isLoading}>
+              <RefreshCw className={cn("h-4 w-4 mr-2", isLoading && "animate-spin")} />
               Làm mới
             </Button>
             <Button variant="outline">
@@ -425,18 +389,12 @@ export default function Analytics() {
           />
         </div>
 
-        <Tabs
-          value={activeTab}
-          onValueChange={setActiveTab}
-          className="space-y-6"
-        >
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="overview">Tổng quan</TabsTrigger>
             <TabsTrigger value="users">Người dùng</TabsTrigger>
-            <TabsTrigger value="revenue">Doanh thu tin đăng</TabsTrigger>
-            <TabsTrigger value="subscriptions">
-              Doanh thu gói thành viên
-            </TabsTrigger>
+            <TabsTrigger value="plans">Gói tin đăng</TabsTrigger>
+            <TabsTrigger value="subscriptions">Gói thành viên</TabsTrigger>
           </TabsList>
 
           {/* Overview */}
@@ -465,9 +423,7 @@ export default function Analytics() {
                   <CardTitle>Tổng người dùng</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold">
-                    {totalUsers.toLocaleString()}
-                  </div>
+                  <div className="text-3xl font-bold">{totalUsers.toLocaleString()}</div>
                   <p className="text-sm text-muted-foreground mt-2">
                     {userTimeRange?.newUsers || 0} người dùng mới,{" "}
                     {userTimeRange?.newOrganizers || 0} organizers mới
@@ -479,22 +435,10 @@ export default function Analytics() {
                   <CardTitle>Tổng đơn hàng</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold">
-                    {totalOrders.toLocaleString()}
-                  </div>
+                  <div className="text-3xl font-bold">{totalOrders.toLocaleString()}</div>
                   <p className="text-sm text-muted-foreground mt-2">
-                    Từ{" "}
-                    {revenueTimeRange?.startDate
-                      ? new Date(revenueTimeRange.startDate).toLocaleDateString(
-                          "vi-VN",
-                        )
-                      : ""}{" "}
-                    đến{" "}
-                    {revenueTimeRange?.endDate
-                      ? new Date(revenueTimeRange.endDate).toLocaleDateString(
-                          "vi-VN",
-                        )
-                      : ""}
+                    Từ {revenueTimeRange?.startDate ? new Date(revenueTimeRange.startDate).toLocaleDateString("vi-VN") : ""} đến{" "}
+                    {revenueTimeRange?.endDate ? new Date(revenueTimeRange.endDate).toLocaleDateString("vi-VN") : ""}
                   </p>
                 </CardContent>
               </Card>
@@ -525,40 +469,24 @@ export default function Analytics() {
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div>
-                    <p className="text-sm text-muted-foreground">
-                      Người dùng mới
-                    </p>
-                    <p className="text-2xl font-bold">
-                      {userTimeRange?.newUsers || 0}
-                    </p>
+                    <p className="text-sm text-muted-foreground">Người dùng mới</p>
+                    <p className="text-2xl font-bold">{userTimeRange?.newUsers || 0}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground">
-                      Organizers mới
-                    </p>
-                    <p className="text-2xl font-bold">
-                      {userTimeRange?.newOrganizers || 0}
-                    </p>
+                    <p className="text-sm text-muted-foreground">Organizers mới</p>
+                    <p className="text-2xl font-bold">{userTimeRange?.newOrganizers || 0}</p>
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Tổng cộng</p>
-                    <p className="text-2xl font-bold">
-                      {userTimeRange?.total || 0}
-                    </p>
+                    <p className="text-2xl font-bold">{userTimeRange?.total || 0}</p>
                   </div>
                 </div>
                 {userTimeRange && (
                   <>
                     <Separator className="my-4" />
                     <p className="text-sm text-muted-foreground">
-                      Từ{" "}
-                      {new Date(userTimeRange.startDate).toLocaleDateString(
-                        "vi-VN",
-                      )}{" "}
-                      đến{" "}
-                      {new Date(userTimeRange.endDate).toLocaleDateString(
-                        "vi-VN",
-                      )}
+                      Từ {new Date(userTimeRange.startDate).toLocaleDateString("vi-VN")} đến{" "}
+                      {new Date(userTimeRange.endDate).toLocaleDateString("vi-VN")}
                     </p>
                   </>
                 )}
@@ -573,55 +501,80 @@ export default function Analytics() {
             />
           </TabsContent>
 
-          {/* Revenue Tab */}
-          <TabsContent value="revenue" className="space-y-6">
+          {/* Plans (Gói tin đăng) Tab */}
+          <TabsContent value="plans" className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>Thống kê doanh thu</CardTitle>
+                <CardTitle>Gói tin đăng (theo khoảng thời gian)</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div>
-                    <p className="text-sm text-muted-foreground">
-                      Tổng doanh thu
-                    </p>
-                    <p className="text-2xl font-bold">
-                      {formatCurrencyFull(totalRevenue)}
-                    </p>
+                    <p className="text-sm text-muted-foreground">Tổng gói đã mua</p>
+                    <p className="text-2xl font-bold">{(plansTimeRange?.totalPlansPurchased || 0).toLocaleString()}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground">
-                      Tổng đơn hàng
-                    </p>
-                    <p className="text-2xl font-bold">
-                      {totalOrders.toLocaleString()}
-                    </p>
+                    <p className="text-sm text-muted-foreground">Tổng đơn hàng</p>
+                    <p className="text-2xl font-bold">{(plansTimeRange?.totalOrders || 0).toLocaleString()}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Số loại gói</p>
+                    <p className="text-2xl font-bold">{plansTimeRange?.totalPlanTypes || 0}</p>
                   </div>
                 </div>
-                {revenueTimeRange && (
+                {plansTimeRange && (
                   <>
                     <Separator className="my-4" />
                     <p className="text-sm text-muted-foreground">
-                      Từ{" "}
-                      {new Date(revenueTimeRange.startDate).toLocaleDateString(
-                        "vi-VN",
-                      )}{" "}
-                      đến{" "}
-                      {new Date(revenueTimeRange.endDate).toLocaleDateString(
-                        "vi-VN",
-                      )}
+                      Từ {new Date(plansTimeRange.startDate).toLocaleDateString("vi-VN")} đến{" "}
+                      {new Date(plansTimeRange.endDate).toLocaleDateString("vi-VN")}
                     </p>
                   </>
                 )}
               </CardContent>
             </Card>
-            <ChartCard
-              title="Xu hướng doanh thu (6 tháng qua)"
-              data={revenueTrend}
-              type="bar"
-              color="green"
-              format="currency"
-            />
+
+            {plansTimeRange?.planBreakdown && plansTimeRange.planBreakdown.length > 0 && (
+              <ChartCard
+                title="Số lượng gói đã mua theo loại"
+                data={plansTimeRange.planBreakdown.map((p) => ({ month: p.planName, value: p.totalPurchased }))}
+                type="bar"
+                color="purple"
+                format="number"
+              />
+            )}
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Chi tiết gói tin đăng</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {plansTimeRange?.planBreakdown && plansTimeRange.planBreakdown.length > 0 ? (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Tên gói</TableHead>
+                        <TableHead>Tổng đã mua</TableHead>
+                        <TableHead>Tổng đơn hàng</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {plansTimeRange.planBreakdown.map((plan) => (
+                        <TableRow key={plan.planId}>
+                          <TableCell className="font-medium">{plan.planName}</TableCell>
+                          <TableCell>{plan.totalPurchased.toLocaleString()}</TableCell>
+                          <TableCell>{plan.totalOrders.toLocaleString()}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                ) : (
+                  <div className="text-center py-8">
+                    <p className="text-muted-foreground">Không có dữ liệu gói tin đăng</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* Subscriptions Tab */}
@@ -631,23 +584,17 @@ export default function Analytics() {
                 <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
                   <Card>
                     <CardHeader>
-                      <CardTitle className="text-sm font-medium">
-                        Tổng doanh thu
-                      </CardTitle>
+                      <CardTitle className="text-sm font-medium">Tổng doanh thu</CardTitle>
                     </CardHeader>
                     <CardContent>
                       <div className="text-2xl font-bold">
-                        {formatCurrency(
-                          subscriptionDashboard.summary.totalRevenue,
-                        )}
+                        {formatCurrency(subscriptionDashboard.summary.totalRevenue)}
                       </div>
                     </CardContent>
                   </Card>
                   <Card>
                     <CardHeader>
-                      <CardTitle className="text-sm font-medium">
-                        Tổng đăng ký
-                      </CardTitle>
+                      <CardTitle className="text-sm font-medium">Tổng đăng ký</CardTitle>
                     </CardHeader>
                     <CardContent>
                       <div className="text-2xl font-bold">
@@ -657,9 +604,7 @@ export default function Analytics() {
                   </Card>
                   <Card>
                     <CardHeader>
-                      <CardTitle className="text-sm font-medium">
-                        Đang hoạt động
-                      </CardTitle>
+                      <CardTitle className="text-sm font-medium">Đang hoạt động</CardTitle>
                     </CardHeader>
                     <CardContent>
                       <div className="text-2xl font-bold">
@@ -669,9 +614,7 @@ export default function Analytics() {
                   </Card>
                   <Card>
                     <CardHeader>
-                      <CardTitle className="text-sm font-medium">
-                        Đã hủy
-                      </CardTitle>
+                      <CardTitle className="text-sm font-medium">Đã hủy</CardTitle>
                     </CardHeader>
                     <CardContent>
                       <div className="text-2xl font-bold">
@@ -681,9 +624,7 @@ export default function Analytics() {
                   </Card>
                   <Card>
                     <CardHeader>
-                      <CardTitle className="text-sm font-medium">
-                        Hết hạn
-                      </CardTitle>
+                      <CardTitle className="text-sm font-medium">Hết hạn</CardTitle>
                     </CardHeader>
                     <CardContent>
                       <div className="text-2xl font-bold">
@@ -698,8 +639,7 @@ export default function Analytics() {
                     <CardTitle>Chi tiết theo gói</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    {subscriptionDashboard.plans &&
-                    subscriptionDashboard.plans.length > 0 ? (
+                    {subscriptionDashboard.plans && subscriptionDashboard.plans.length > 0 ? (
                       <Table>
                         <TableHeader>
                           <TableRow>
@@ -714,29 +654,18 @@ export default function Analytics() {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {(
-                            subscriptionDashboard.plans ||
-                            subscriptionDashboard.planMetrics ||
-                            []
-                          ).map((plan) => (
+                          {(subscriptionDashboard.plans || subscriptionDashboard.planMetrics || []).map((plan) => (
                             <TableRow key={plan.plan_id}>
-                              <TableCell className="font-medium">
-                                {plan.plan_name}
-                              </TableCell>
+                              <TableCell className="font-medium">{plan.plan_name}</TableCell>
                               <TableCell>
-                                {formatCurrencyFull(plan.plan_price)}{" "}
-                                {plan.plan_currency}
+                                {formatCurrencyFull(plan.plan_price)} {plan.plan_currency}
                               </TableCell>
                               <TableCell>
                                 <Badge variant="outline">
-                                  {plan.billing_cycle === "monthly"
-                                    ? "Tháng"
-                                    : "Năm"}
+                                  {plan.billing_cycle === "monthly" ? "Tháng" : "Năm"}
                                 </Badge>
                               </TableCell>
-                              <TableCell>
-                                {plan.totalSubscriptions.toLocaleString()}
-                              </TableCell>
+                              <TableCell>{plan.totalSubscriptions.toLocaleString()}</TableCell>
                               <TableCell>
                                 <Badge className="bg-green-100 text-green-700">
                                   {plan.activeSubscriptions.toLocaleString()}
@@ -761,9 +690,7 @@ export default function Analytics() {
                       </Table>
                     ) : (
                       <div className="text-center py-8">
-                        <p className="text-muted-foreground">
-                          Không có dữ liệu đăng ký gói
-                        </p>
+                        <p className="text-muted-foreground">Không có dữ liệu đăng ký gói</p>
                       </div>
                     )}
                   </CardContent>
