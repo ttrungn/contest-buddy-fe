@@ -34,7 +34,15 @@ import {
 import { cn } from "@/lib/utils";
 import { useAppSelector, useAppDispatch } from "@/services/store/store";
 import { logout } from "@/services/features/auth/authSlice";
-import { isAdmin, isOrganizer, isCustomer, isManager, getPrimaryRole, getRoleDisplayName, getRoleBadgeVariant } from "@/lib/roleUtils";
+import {
+  isAdmin,
+  isOrganizer,
+  isCustomer,
+  isManager,
+  getPrimaryRole,
+  getRoleDisplayName,
+  getRoleBadgeVariant,
+} from "@/lib/roleUtils";
 
 export default function Navbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -45,7 +53,7 @@ export default function Navbar() {
 
   const handleLogout = () => {
     dispatch(logout());
-    navigate('/login');
+    navigate("/login");
   };
 
   const participantNavigation = [
@@ -64,9 +72,12 @@ export default function Navbar() {
 
   const adminNavigation = [
     { name: "Phân tích", href: "/admin/analytics", icon: BarChart3 },
-    { name: "Quản lý gói", href: "/admin/plans", icon: Briefcase },
-    { name: "User Subscriptions", href: "/admin/user-subscriptions", icon: CreditCard },
-
+    { name: "Quản lý gói tin đăng", href: "/admin/plans", icon: Briefcase },
+    {
+      name: "Quản lý gói thành viên",
+      href: "/admin/user-subscriptions",
+      icon: CreditCard,
+    },
   ];
 
   // Determine navigation based on user role from auth state
@@ -145,9 +156,16 @@ export default function Navbar() {
               <Button variant="ghost" size="icon">
                 {isAuthenticated && user ? (
                   <Avatar className="h-8 w-8">
-                    <AvatarImage src={user.avatar_url || (user as any).avatar} alt={user.full_name} />
+                    <AvatarImage
+                      src={user.avatar_url || (user as any).avatar}
+                      alt={user.full_name}
+                    />
                     <AvatarFallback className="bg-gradient-to-r from-primary to-purple-500 text-white">
-                      {user.full_name?.split(' ').map(n => n[0]).join('').toUpperCase() || <User className="h-4 w-4" />}
+                      {user.full_name
+                        ?.split(" ")
+                        .map((n) => n[0])
+                        .join("")
+                        .toUpperCase() || <User className="h-4 w-4" />}
                     </AvatarFallback>
                   </Avatar>
                 ) : (
@@ -163,21 +181,33 @@ export default function Navbar() {
                   <div className="px-3 py-2 border-b">
                     <div className="flex items-center space-x-2">
                       <Avatar className="h-8 w-8">
-                        <AvatarImage src={user?.avatar_url || (user as any)?.avatar} alt={user?.full_name} />
+                        <AvatarImage
+                          src={user?.avatar_url || (user as any)?.avatar}
+                          alt={user?.full_name}
+                        />
                         <AvatarFallback className="bg-gradient-to-r from-primary to-purple-500 text-white">
-                          {user?.full_name?.split(' ').map(n => n[0]).join('').toUpperCase() || <User className="h-4 w-4" />}
+                          {user?.full_name
+                            ?.split(" ")
+                            .map((n) => n[0])
+                            .join("")
+                            .toUpperCase() || <User className="h-4 w-4" />}
                         </AvatarFallback>
                       </Avatar>
                       <div>
                         <p className="text-sm font-medium">{user?.full_name}</p>
-                        <p className="text-xs text-muted-foreground">{user?.email}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {user?.email}
+                        </p>
                       </div>
                     </div>
                   </div>
                   {userIsAdmin ? null : userIsManager ? (
                     <>
                       <DropdownMenuItem asChild>
-                        <Link to="/organizer-profile" className="flex items-center">
+                        <Link
+                          to="/organizer-profile"
+                          className="flex items-center"
+                        >
                           <Building2 className="mr-2 h-4 w-4" />
                           <span>Thông tin Ban tổ chức</span>
                         </Link>
@@ -192,7 +222,10 @@ export default function Navbar() {
                         </Link>
                       </DropdownMenuItem>
                       <DropdownMenuItem asChild>
-                        <Link to="/my-competitions" className="flex items-center">
+                        <Link
+                          to="/my-competitions"
+                          className="flex items-center"
+                        >
                           <Trophy className="mr-2 h-4 w-4" />
                           <span>Cuộc thi của tôi</span>
                         </Link>
@@ -211,13 +244,19 @@ export default function Navbar() {
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem asChild>
-                        <Link to="/subscriptions/my" className="flex items-center">
+                        <Link
+                          to="/subscriptions/my"
+                          className="flex items-center"
+                        >
                           <CreditCard className="mr-2 h-4 w-4" />
                           <span>Gói Subscription của tôi</span>
                         </Link>
                       </DropdownMenuItem>
                       <DropdownMenuItem asChild>
-                        <Link to="/subscriptions/history" className="flex items-center">
+                        <Link
+                          to="/subscriptions/history"
+                          className="flex items-center"
+                        >
                           <Calendar className="mr-2 h-4 w-4" />
                           <span>Lịch sử Subscription</span>
                         </Link>
@@ -246,7 +285,10 @@ export default function Navbar() {
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
-                    <Link to="/login?mode=register" className="flex items-center">
+                    <Link
+                      to="/login?mode=register"
+                      className="flex items-center"
+                    >
                       <UserPlus className="mr-2 h-4 w-4" />
                       <span>Đăng ký</span>
                     </Link>
