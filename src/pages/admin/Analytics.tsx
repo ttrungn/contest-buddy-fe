@@ -41,6 +41,7 @@ import {
   fetchUserPeriodStats,
   fetchRevenueTimeRangeStats,
   fetchRevenuePeriodStats,
+  fetchPlansTimeRangeStats,
   fetchSubscriptionDashboard,
   clearAnalyticsError,
 } from "@/services/features/analytics/analyticsSlice";
@@ -53,6 +54,7 @@ export default function Analytics() {
     userPeriod,
     revenueTimeRange,
     revenuePeriod,
+    plansTimeRange,
     subscriptionDashboard,
     isLoading,
     error,
@@ -86,6 +88,7 @@ export default function Analytics() {
 
     dispatch(fetchUserTimeRangeStats({ startDate: startDateStr, endDate: endDateStr }));
     dispatch(fetchRevenueTimeRangeStats({ startDate: startDateStr, endDate: endDateStr }));
+    dispatch(fetchPlansTimeRangeStats({ startDate: startDateStr, endDate: endDateStr }));
     dispatch(fetchSubscriptionDashboard(undefined));
   }, [dispatch, selectedPeriod]);
 
@@ -390,8 +393,8 @@ export default function Analytics() {
           <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="overview">Tổng quan</TabsTrigger>
             <TabsTrigger value="users">Người dùng</TabsTrigger>
-            <TabsTrigger value="revenue">Doanh thu</TabsTrigger>
-            <TabsTrigger value="subscriptions">Đăng ký gói</TabsTrigger>
+            <TabsTrigger value="plans">Gói tin đăng</TabsTrigger>
+            <TabsTrigger value="subscriptions">Gói thành viên</TabsTrigger>
           </TabsList>
 
           {/* Overview */}
@@ -498,41 +501,80 @@ export default function Analytics() {
             />
           </TabsContent>
 
-          {/* Revenue Tab */}
-          <TabsContent value="revenue" className="space-y-6">
+          {/* Plans (Gói tin đăng) Tab */}
+          <TabsContent value="plans" className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>Thống kê doanh thu</CardTitle>
+                <CardTitle>Gói tin đăng (theo khoảng thời gian)</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div>
-                    <p className="text-sm text-muted-foreground">Tổng doanh thu</p>
-                    <p className="text-2xl font-bold">{formatCurrencyFull(totalRevenue)}</p>
+                    <p className="text-sm text-muted-foreground">Tổng gói đã mua</p>
+                    <p className="text-2xl font-bold">{(plansTimeRange?.totalPlansPurchased || 0).toLocaleString()}</p>
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Tổng đơn hàng</p>
-                    <p className="text-2xl font-bold">{totalOrders.toLocaleString()}</p>
+                    <p className="text-2xl font-bold">{(plansTimeRange?.totalOrders || 0).toLocaleString()}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Số loại gói</p>
+                    <p className="text-2xl font-bold">{plansTimeRange?.totalPlanTypes || 0}</p>
                   </div>
                 </div>
-                {revenueTimeRange && (
+                {plansTimeRange && (
                   <>
                     <Separator className="my-4" />
                     <p className="text-sm text-muted-foreground">
-                      Từ {new Date(revenueTimeRange.startDate).toLocaleDateString("vi-VN")} đến{" "}
-                      {new Date(revenueTimeRange.endDate).toLocaleDateString("vi-VN")}
+                      Từ {new Date(plansTimeRange.startDate).toLocaleDateString("vi-VN")} đến{" "}
+                      {new Date(plansTimeRange.endDate).toLocaleDateString("vi-VN")}
                     </p>
                   </>
                 )}
               </CardContent>
             </Card>
-            <ChartCard
-              title="Xu hướng doanh thu (6 tháng qua)"
-              data={revenueTrend}
-              type="bar"
-              color="green"
-              format="currency"
-            />
+
+            {plansTimeRange?.planBreakdown && plansTimeRange.planBreakdown.length > 0 && (
+              <ChartCard
+                title="Số lượng gói đã mua theo loại"
+                data={plansTimeRange.planBreakdown.map((p) => ({ month: p.planName, value: p.totalPurchased }))}
+                type="bar"
+                color="purple"
+                format="number"
+              />
+            )}
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Chi tiết gói tin đăng</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {plansTimeRange?.planBreakdown && plansTimeRange.planBreakdown.length > 0 ? (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Tên gói</TableHead>
+                        <TableHead>Tổng đã mua</TableHead>
+                        <TableHead>Tổng đơn hàng</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {plansTimeRange.planBreakdown.map((plan) => (
+                        <TableRow key={plan.planId}>
+                          <TableCell className="font-medium">{plan.planName}</TableCell>
+                          <TableCell>{plan.totalPurchased.toLocaleString()}</TableCell>
+                          <TableCell>{plan.totalOrders.toLocaleString()}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                ) : (
+                  <div className="text-center py-8">
+                    <p className="text-muted-foreground">Không có dữ liệu gói tin đăng</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* Subscriptions Tab */}

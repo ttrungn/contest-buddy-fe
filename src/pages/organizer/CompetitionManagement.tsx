@@ -769,7 +769,21 @@ export default function CompetitionManagementPage() {
                   </Select>
                 </div>
                 <div className="flex items-center space-x-2">
-
+                  {(() => {
+                    const paymentStatus = getPaymentStatus(selectedCompetition);
+                    const needsPayment = paymentStatus === "UNPAID" || paymentStatus === "EXPIRED";
+                    if (!needsPayment) return null;
+                    return (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handlePayment(selectedCompetition.competitionId)}
+                        disabled={isPaymentLoading}
+                      >
+                        {isPaymentLoading ? "Đang xử lý..." : "Thanh toán"}
+                      </Button>
+                    );
+                  })()}
                   <Button
                     variant="outline"
                     size="sm"
