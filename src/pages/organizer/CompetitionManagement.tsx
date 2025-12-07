@@ -329,10 +329,10 @@ export default function CompetitionManagementPage() {
 
   const filteredParticipants = participants.filter(
     (participant) =>
-      participant.user.full_name
-        .toLowerCase()
+      participant.user?.full_name
+        ?.toLowerCase()
         .includes(searchQuery.toLowerCase()) ||
-      participant.user.email.toLowerCase().includes(searchQuery.toLowerCase()),
+      participant.user?.email?.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
   // Frontend pagination for participants
@@ -1061,27 +1061,27 @@ export default function CompetitionManagementPage() {
                           <div className="flex items-center space-x-3">
                             <Avatar className="h-8 w-8">
                               <AvatarImage
-                                src={participant.user.avatar_url}
-                                alt={participant.user.full_name}
+                                src={participant.user?.avatar_url}
+                                alt={participant.user?.full_name || "User"}
                               />
                               <AvatarFallback>
-                                {participant.user.full_name
-                                  .split(" ")
+                                {participant.user?.full_name
+                                  ?.split(" ")
                                   .map((n) => n[0])
-                                  .join("")}
+                                  .join("") || "U"}
                               </AvatarFallback>
                             </Avatar>
                             <div>
                               <p className="font-medium">
-                                {participant.user.full_name}
+                                {participant.user?.full_name || "Unknown User"}
                               </p>
                               <p className="text-sm text-muted-foreground">
-                                @{participant.user.username}
+                                @{participant.user?.username || "N/A"}
                               </p>
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell>{participant.user.city}</TableCell>
+                        <TableCell>{participant.user?.city || "N/A"}</TableCell>
                         <TableCell>
                           {formatDate(new Date(participant.registration_date))}
                         </TableCell>
@@ -1107,7 +1107,7 @@ export default function CompetitionManagementPage() {
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          {participant.user.rating ? (
+                          {participant.user?.rating ? (
                             <span className="font-medium">
                               {participant.user.rating}/5
                             </span>
