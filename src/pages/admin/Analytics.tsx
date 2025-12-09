@@ -407,7 +407,7 @@ export default function Analytics() {
                 color="blue"
                 format="number"
               />
-              <ChartCardsr
+              <ChartCard
                 title="Xu hướng doanh thu (6 tháng qua)"
                 data={revenueTrend}
                 type="bar"
